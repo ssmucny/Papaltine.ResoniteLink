@@ -56,7 +56,7 @@ module Operators =
 
                 let! secondaryBoundValues =
                     boundValue
-                    |> Seq.map (fun result -> binder result link |> _.AsTask())
+                    |> Seq.map (fun result -> (binder result link).AsTask())
                     |> Task.WhenAll
 
                 return secondaryBoundValues |> Seq.collect id
@@ -231,6 +231,23 @@ module RPath =
                 return slot.Children.AsEnumerable()
             }
             |> ValueTask<Slot seq>
+
+    /// <summary>
+    /// Gets direct children of a slot that satisfy a predicate. The same as using children then filter.
+    /// </summary>
+    /// <param name="childPredicate">The filter function</param>
+    /// <param name="slot">The slot to get the child from</param>
+    /// <returns>0 or more children</returns>
+    let inline child ([<InlineIfLambda>] childPredicate) (slot: Slot) : RPath<Slot> =
+        (fun link ->
+            task {
+                if slot.IsReferenceOnly then
+                    return! children false slot link
+                else
+                    return slot.Children
+            }
+            |> ValueTask<Slot seq>)
+        |> filter childPredicate
 
     /// <summary>
     /// Gets the direct children of a slot without component data.
@@ -432,8 +449,7 @@ module RPath =
     /// <param name="count">The number of elements to take.</param>
     /// <param name="query">The source query.</param>
     /// <returns>A query returning at most the specified number of elements.</returns>
-    let inline take (count: int) ([<InlineIfLambda>] query: RPath<'T>) : RPath<'T> =
-        query |> mapAll (Seq.take count)
+    let inline take (count: int) ([<InlineIfLambda>] query: RPath<'T>) : RPath<'T> = query |> mapAll (Seq.take count)
 
     /// <summary>
     /// Skips the first N elements from the query results.
@@ -441,8 +457,7 @@ module RPath =
     /// <param name="count">The number of elements to skip.</param>
     /// <param name="query">The source query.</param>
     /// <returns>A query returning all elements after the skipped ones.</returns>
-    let inline skip (count: int) ([<InlineIfLambda>] query: RPath<'T>) : RPath<'T> =
-        query |> mapAll (Seq.skip count)
+    let inline skip (count: int) ([<InlineIfLambda>] query: RPath<'T>) : RPath<'T> = query |> mapAll (Seq.skip count)
 
     /// <summary>
     /// Gets a slice of elements from start to stop index.

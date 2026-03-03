@@ -17,10 +17,12 @@ open ResoniteLink.RPath
 /// </remarks>
 [<Struct>]
 type RPathBuilder<'T> =
-    { /// <summary>The link interface used to execute the query.</summary>
-      Link: ILinkInterface
-      /// <summary>The underlying RPath query function.</summary>
-      RunWith: RPath<'T> }
+    {
+        /// <summary>The link interface used to execute the query.</summary>
+        Link: ILinkInterface
+        /// <summary>The underlying RPath query function.</summary>
+        RunWith: RPath<'T>
+    }
 
 /// <summary>
 /// Extension methods for starting RPath queries from a LinkInterface.
@@ -233,6 +235,16 @@ type SlotQueryBuilderExtensions =
     static member inline Children(slotQuery: RPathBuilder<Slot>) =
         { Link = slotQuery.Link
           RunWith = RPath.bind RPath.childrenDeep slotQuery.RunWith }
+
+    /// <summary>
+    /// Gets the direct children of a slot that satisfy a predicate. The same as using Children then Where.
+    /// </summary>
+    /// <param name="slotQuery">The current query</param>
+    /// <param name="childPredicate">The filter function</param>
+    [<Extension>]
+    static member inline Child(slotQuery: RPathBuilder<Slot>, childPredicate: Func<Slot, bool>) =
+        { Link = slotQuery.Link
+          RunWith = RPath.bind (RPath.child childPredicate.Invoke) slotQuery.RunWith }
 
     /// <summary>
     /// Gets the parent of each slot with full component data.
