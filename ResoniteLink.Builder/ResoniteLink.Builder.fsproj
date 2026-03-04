@@ -23,7 +23,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="../README.md" Pack="true" PackagePath="/"/>
+        <None Include="README.md" Pack="true" PackagePath="/"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -32,6 +32,10 @@
 
     <ItemGroup>
         <Compile Include="Builder.fs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="README.md" />
     </ItemGroup>
 
 </Project>
