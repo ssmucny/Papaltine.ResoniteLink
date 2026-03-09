@@ -4,8 +4,8 @@
         <TargetFramework>netstandard2.0</TargetFramework>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-        <PackageId>ResoniteLink.RPath</PackageId>
-        <Version>0.1.0</Version>
+        <PackageId>Papaltine.ResoniteLink.RPath</PackageId>
+        <Version>0.3.0</Version>
         <Authors>Sam Smucny</Authors>
         <Description>A composable query EDSL for ResoniteLink, providing LINQ-style ergonomic operations for exploring the Resonite data model hierarchy.</Description>
         <PackageTags>Resonite ResoniteLink Query EDSL</PackageTags>
@@ -32,7 +32,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Include="ILinkIterface.fs"/>
         <Compile Include="RPath.fs"/>
         <Compile Include="Extensions.fs"/>
     </ItemGroup>

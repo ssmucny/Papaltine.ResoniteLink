@@ -13,11 +13,11 @@ type ErrorInfo = string
 /// </summary>
 /// <typeparam name="T">The type of elements produced by this query.</typeparam>
 /// <remarks>
-/// RPath queries are functions that take an ILinkInterface and return a sequence of results.
+/// RPath queries are functions that take an LinkInterface and return a sequence of results.
 /// They are composable using monadic bind operations and can be executed lazily.
 /// RPath is a monad stack that includes asynchronous operations (ValueTask) and sequences (seq).
 /// </remarks>
-type RPath<'T> = ILinkInterface -> ValueTask<'T seq>
+type RPath<'T> = LinkInterface -> ValueTask<'T seq>
 
 /// <summary>
 /// Exception thrown when a ResoniteLink operation fails.
@@ -109,7 +109,7 @@ module RPath =
     /// <param name="includeComponentData">Whether to include full component data in the response.</param>
     /// <param name="link">The link interface to use for the request.</param>
     /// <returns>A task containing the retrieved slot.</returns>
-    let getSlot slotID depth includeComponentData (link: ILinkInterface) =
+    let getSlot slotID depth includeComponentData (link: LinkInterface) =
         task {
             let! result =
                 link.GetSlotData(GetSlot(SlotID = slotID, Depth = depth, IncludeComponentData = includeComponentData))
@@ -487,7 +487,7 @@ module RPath =
     /// <returns>A query returning the dereferenced value, or empty if the reference is null.</returns>
     let inline dereference
         (dereferenceFunc:
-            ILinkInterface -> string -> Task<'T>
+            LinkInterface -> string -> Task<'T>
                 when 'T: (member Success: bool) and 'T: (member ErrorInfo: string) and 'T: (member Data: 'U))
         (referenceValue: Reference)
         : RPath<'U> =
@@ -512,7 +512,7 @@ module RPath =
     /// <param name="referenceValue">The reference to dereference.</param>
     /// <returns>A query returning the target slot, or empty if the reference is null.</returns>
     let dereferenceSlot deep (referenceValue: Reference) : RPath<Slot> =
-        let getSlot (link: ILinkInterface) slotID =
+        let getSlot (link: LinkInterface) slotID =
             link.GetSlotData(GetSlot(SlotID = slotID, Depth = 0, IncludeComponentData = deep))
 
         dereference getSlot referenceValue
@@ -537,7 +537,7 @@ module RPath =
     /// <param name="referenceValue">The reference to dereference.</param>
     /// <returns>A query returning the target component, or empty if the reference is null.</returns>
     let inline dereferenceComponent (referenceValue: Reference) : RPath<Component> =
-        let getComponent (link: ILinkInterface) componentID =
+        let getComponent (link: LinkInterface) componentID =
             link.GetComponentData(GetComponent(ComponentID = componentID))
 
         dereference getComponent referenceValue
@@ -560,7 +560,7 @@ module RPath =
     /// <param name="link">The link interface to use for execution.</param>
     /// <param name="query">The query to execute.</param>
     /// <returns>A ValueTask containing Ok with the results, or Error with the exception.</returns>
-    let inline toResultAsync (link: ILinkInterface) ([<InlineIfLambda>] query: RPath<'T>) =
+    let inline toResult ([<InlineIfLambda>] query: RPath<'T>) (link: LinkInterface) =
         task {
             try
                 let! result = query link
@@ -577,7 +577,7 @@ module RPath =
     /// <param name="query">The query to execute.</param>
     /// <returns>A ValueTask containing the result sequence.</returns>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    let inline toSeqAsync (link: ILinkInterface) ([<InlineIfLambda>] query: RPath<'T>) = query link
+    let inline toSeq ([<InlineIfLambda>] query: RPath<'T>) (link: LinkInterface) = query link
 
     /// <summary>
     /// Executes a query and returns the results as an array.
@@ -586,7 +586,7 @@ module RPath =
     /// <param name="query">The query to execute.</param>
     /// <returns>A ValueTask containing the result array.</returns>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    let inline toArrayAsync (link: ILinkInterface) (query: RPath<'T>) =
+    let inline toArray (query: RPath<'T>) (link: LinkInterface) =
         task {
             let! items = query link
             return (Seq.toArray items)
@@ -600,12 +600,26 @@ module RPath =
     /// <param name="query">The query to execute.</param>
     /// <returns>A ValueTask containing the result as a mutable list.</returns>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    let inline toResizeArray (link: ILinkInterface) (query: RPath<'T>) =
+    let inline toResizeArray (query: RPath<'T>) (link: LinkInterface) =
         task {
             let! items = query link
             return (ResizeArray items)
         }
         |> ValueTask<ResizeArray<'T>>
+
+    let inline first (query: RPath<'T>) (link: LinkInterface) =
+        task {
+            let! items = query link
+            return Seq.tryHead items
+        }
+        |> ValueTask<'T option>
+
+    let inline firstOr (defaultValue: 'T) (query: RPath<'T>) (link: LinkInterface) =
+        task {
+            let! items = query link
+            return Seq.tryHead items |> Option.defaultValue defaultValue
+        }
+        |> ValueTask<'T>
 
     /// <summary>
     /// A query that returns the root slot of the data model.
@@ -618,3 +632,20 @@ module RPath =
                 return Seq.singleton rootSlot
             }
             |> ValueTask<Slot seq>
+
+    /// <summary>
+    /// Executes a query with a LinkInterface. Returns the result as a ValueTask.
+    /// </summary>
+    /// <param name="link">The link interface to use for execution</param>
+    /// <param name="query">The query to run</param>
+    /// <remarks>This simply flips the arguments of the query function for ergonomic chaining with piping</remarks>
+    let inline runAsync (link: LinkInterface) (query: RPath<'T>) = query link
+
+    /// <summary>
+    /// Executes a query with a LinkInterface. Blocks until the query completes.
+    /// </summary>
+    /// <param name="link">The link interface to use for execution</param>
+    /// <param name="query">The query to run</param>
+    /// <remarks>This simply flips the arguments of the query function for ergonomic chaining with piping</remarks>
+    let inline run (link: LinkInterface) (query: RPath<'T>) =
+        query link |> _.AsTask() |> Async.AwaitTask |> Async.RunSynchronously

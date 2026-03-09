@@ -4,11 +4,11 @@
         <TargetFramework>netstandard2.0</TargetFramework>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-        <PackageId>ResoniteLink.Builder</PackageId>
+        <PackageId>Papaltine.ResoniteLink.Builder</PackageId>
         <Version>0.1.0</Version>
         <Authors>Sam Smucny</Authors>
         <Description>An EDSL for declaratively constructing ResoniteLink slot hierarchies with nested components and children.</Description>
-        <PackageTags>Resonite ResoniteLink Builder DSL Elmish</PackageTags>
+        <PackageTags>Resonite ResoniteLink Builder EDSL Elmish</PackageTags>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageProjectUrl>https://github.com/ssmucny/ResoniteLink.RPath</PackageProjectUrl>

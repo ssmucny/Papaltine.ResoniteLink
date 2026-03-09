@@ -19,7 +19,7 @@ open ResoniteLink.RPath
 type RPathBuilder<'T> =
     {
         /// <summary>The link interface used to execute the query.</summary>
-        Link: ILinkInterface
+        Link: LinkInterface
         /// <summary>The underlying RPath query function.</summary>
         RunWith: RPath<'T>
     }
@@ -35,18 +35,8 @@ type LinkInterfaceExtensions =
     /// <param name="linkInterface">The link interface to use for query execution.</param>
     /// <returns>An RPathBuilder positioned at the root slot.</returns>
     [<Extension>]
-    static member inline RPath(linkInterface: ILinkInterface) =
-        { Link = linkInterface
-          RunWith = RPath.root }
-
-    /// <summary>
-    /// Creates an RPathBuilder starting at the root slot.
-    /// </summary>
-    /// <param name="linkInterface">The ResoniteLink LinkInterface to use for query execution.</param>
-    /// <returns>An RPathBuilder positioned at the root slot.</returns>
-    [<Extension>]
     static member inline RPath(linkInterface: LinkInterface) =
-        { Link = linkInterface.ToInterface()
+        { Link = linkInterface
           RunWith = RPath.root }
 
     /// <summary>
@@ -56,30 +46,9 @@ type LinkInterfaceExtensions =
     /// <param name="initialValue">The initial value to start the query with.</param>
     /// <returns>An RPathBuilder containing the initial value.</returns>
     [<Extension>]
-    static member inline RPath(linkInterface: ILinkInterface, initialValue) =
+    static member inline RPath(linkInterface: LinkInterface, initialValue) =
         { Link = linkInterface
           RunWith = RPath.wrap initialValue }
-
-    /// <summary>
-    /// Creates an RPathBuilder starting with a specific initial value.
-    /// </summary>
-    /// <param name="linkInterface">The ResoniteLink LinkInterface to use for query execution.</param>
-    /// <param name="initialValue">The initial value to start the query with.</param>
-    /// <returns>An RPathBuilder containing the initial value.</returns>
-    [<Extension>]
-    static member inline RPath(linkInterface: LinkInterface, initialValue) =
-        { Link = linkInterface.ToInterface()
-          RunWith = RPath.wrap initialValue }
-
-    /// <summary>
-    /// Converts a ResoniteLink LinkInterface to an ILinkInterface.
-    /// </summary>
-    /// <param name="link">The LinkInterface to convert.</param>
-    /// <returns>An ILinkInterface wrapper around the LinkInterface.</returns>
-    [<Extension>]
-    static member ToInterface(link: LinkInterface) =
-        ILinkInterface.ofResoniteLinkInterface link
-
 
 type RPathBuilder<'T> with
     /// <summary>
@@ -160,23 +129,21 @@ type RPathBuilder<'T> with
     /// Executes the query and returns a Result containing either the results or an error.
     /// </summary>
     /// <returns>A ValueTask containing Ok with the result sequence, or Error with the exception.</returns>
-    member inline this.ToResultAsync() =
-        RPath.toResultAsync this.Link this.RunWith
+    member inline this.ToResultAsync() = RPath.toResult this.RunWith this.Link
 
     /// <summary>
     /// Executes the query and returns the results as an array.
     /// </summary>
     /// <returns>A ValueTask containing the result array.</returns>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    member inline this.ToArrayAsync() =
-        RPath.toArrayAsync this.Link this.RunWith
+    member inline this.ToArrayAsync() = RPath.toArray this.RunWith this.Link
 
     /// <summary>
     /// Executes the query and returns the results as a sequence.
     /// </summary>
     /// <returns>A ValueTask containing the result sequence.</returns>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    member inline this.AsEnumerableAsync() = RPath.toSeqAsync this.Link this.RunWith
+    member inline this.AsEnumerableAsync() = RPath.toSeq this.RunWith this.Link
 
     /// <summary>
     /// Executes the query and returns the results as a List&lt;T&gt;.
@@ -184,7 +151,7 @@ type RPathBuilder<'T> with
     /// <returns>A ValueTask containing the results as a mutable list.</returns>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
     member inline this.ToListAsync() =
-        RPath.toResizeArray this.Link this.RunWith
+        RPath.toResizeArray this.RunWith this.Link
 
 /// <summary>
 /// Extension methods for dereferencing Reference values in RPath queries.

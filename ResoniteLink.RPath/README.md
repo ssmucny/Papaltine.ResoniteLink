@@ -1,8 +1,12 @@
 # RPath
 
-A query EDSL that allows querying [ResoniteLink](https://github.com/Yellow-Dog-Man/ResoniteLink) with more ergonomic operations. Similar in style to [LINQ to XML](https://learn.microsoft.com/en-us/dotnet/standard/linq/linq-xml-overview) with some differences.
+A query EDSL that allows querying [ResoniteLink](https://github.com/Yellow-Dog-Man/ResoniteLink) with more ergonomic
+operations. Similar in style to [LINQ to XML](https://learn.microsoft.com/en-us/dotnet/standard/linq/linq-xml-overview)
+with some differences.
 
-Usage from C# follows a similar pattern to LINQ where you utilize a special type (called `RPathBuilder<T>` here), and you perform operations by calling extension methods defined on the type. They can be chained together and composed to form more complex queries.
+Usage from C# follows a similar pattern to LINQ where you utilize a special type (called `RPathBuilder<T>` here), and
+you perform operations by calling extension methods defined on the type. They can be chained together and composed to
+form more complex queries.
 
 ```csharp
 using ResoniteLink;
@@ -63,15 +67,19 @@ else
 ## Items to note
 
 - On demand: It will communicate with ResoniteLink to explore the hierarchy as it needs to.
-- No batching of requests: Each request for data is a separate request, so queries that require many fetches of new data will have high latency
-- Immutable and composable: when calling a method on the builder a new one is returned instead of modifying the current instance. You can use this to reuse parts of queries to create more complex behavior. 
+- No batching of requests: Each request for data is a separate request, so queries that require many fetches of new data
+  will have high latency
+- Immutable and composable: when calling a method on the builder a new one is returned instead of modifying the current
+  instance. You can use this to reuse parts of queries to create more complex behavior.
 - .NET Standard 2.0: compatible with .NET and .NET Framework (Unity)
 
 ## FSharp API
 
-The underlying API is implemented in F#, and that API can be utilized directly as well. You can consume the library in multiple ways depending on your preference (including using the extension methods like C#).
+The underlying API is implemented in F#, and that API can be utilized directly as well. You can consume the library in
+multiple ways depending on your preference (including using the extension methods like C#).
 
-One notable difference is that with F# API you define queries without providing the LinkInterface until you want to execute the query (called point free style).
+One notable difference is that with F# API you define queries without providing the LinkInterface until you want to
+execute the query (called point free style).
 
 ```fsharp
 // Using the pipe operator
@@ -85,7 +93,8 @@ let nodesPipe =
     |> bind dereferenceSlotShallow
     |> bind ancestorsShallow
     |> map _.Name.Value
-    |> toArrayAsync (link.ToInterface())
+    |> toArray
+    |> run link
     
 // Some special operators (>>=/bind and >=>/Kleisli) can be used for extra terseness
 // The >>= indicates clearly where new data is fetched from the data model
@@ -100,7 +109,8 @@ let nodesOperators =
     >>= dereferenceSlotShallow
     >>= ancestorsShallow
     |> map _.Name.Value
-    |> toArrayAsync (link.ToInterface())
+    |> toArray
+    |> runAsync link
 
 // C# style extension methods
 let nodesExtensions =
