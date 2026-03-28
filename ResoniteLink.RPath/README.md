@@ -1,128 +1,161 @@
 # RPath
 
-A query EDSL that allows querying [ResoniteLink](https://github.com/Yellow-Dog-Man/ResoniteLink) with more ergonomic
-operations. Similar in style to [LINQ to XML](https://learn.microsoft.com/en-us/dotnet/standard/linq/linq-xml-overview)
-with some differences.
+RPath is a composable query EDSL for [ResoniteLink](https://github.com/Yellow-Dog-Man/ResoniteLink).
+It gives you a lazy `Query<'T>` pipeline for traversing the Resonite data model and shaping results with
+F#-friendly combinators and C# extension methods.
 
-Usage from C# follows a similar pattern to LINQ where you utilize a special type (called `RPathBuilder<T>` here), and
-you perform operations by calling extension methods defined on the type. They can be chained together and composed to
-form more complex queries.
+## Package
+
+- NuGet package: `Papaltine.ResoniteLink.RPath`
+- Compatible with `.NET Standard 2.0`
+
+```bash
+dotnet add package Papaltine.ResoniteLink.RPath --version 0.3.0
+```
+
+## Core model
+
+`Query<'T>` is an immutable query value:
+
+- Building a query is lazy and does not contact the websocket.
+- Executing a query requires a `LinkInterface`.
+- Query values are composable and reusable.
+
+In F#, `bind`/`>>=` make query-expanding steps explicit, while `map`/`filter`/`flatMap` are in-memory transformations.
+
+## API surfaces
+
+| Surface                                                   | Namespace                      | Primary use                        |
+|-----------------------------------------------------------|--------------------------------|------------------------------------|
+| `Query` module                                            | `ResoniteLink.RPath.Query`     | F# pipelines and combinators       |
+| `Operators` module (`>>=`, `>=>`)                         | `ResoniteLink.RPath.Operators` | F# monadic style                   |
+| `Slot` module wrappers                                    | `ResoniteLink.RPath.Slot`      | F# slot-rooted traversals          |
+| F# extension methods                                      | `ResoniteLink.RPath`           | Method-chaining style in F# and C# |
+| C# LINQ-style extensions (`Select`, `Where`, `Bind`, ...) | `ResoniteLink.RPath.CSharp`    | Idiomatic C# query style           |
+
+## Namespaces
+
+### F#
+
+```fsharp
+open ResoniteLink
+open ResoniteLink.RPath
+open ResoniteLink.RPath.Query       // Use `Query` module combinators without Query. prefix
+open ResoniteLink.RPath.Operators   // for `>>=` and `>=>`
+```
+
+### C#
+
+```csharp
+using ResoniteLink;
+using ResoniteLink.RPath;        // traversal + execution extensions
+using ResoniteLink.RPath.CSharp; // Select/Where/Bind/SelectMany
+```
+
+## Quick start
+
+### F# module style
+
+```fsharp
+open ResoniteLink
+open ResoniteLink.RPath
+
+let namesQuery =
+    Query.root
+    |> Query.childrenLite
+    |> Query.filter _.Name.Value.Contains("Proxy")
+    |> Query.map _.Name.Value
+    |> Query.take 10
+
+let names = Query.toArray namesQuery link
+```
+
+### F# extension style
+
+```fsharp
+open ResoniteLink
+open ResoniteLink.RPath
+
+let names =
+    Query.root
+        .Children(false)
+        .Filter(_.Name.Value.Contains("Proxy"))
+        .Map(_.Name.Value)
+        .Take(10)
+        .ToArray(link)
+```
+
+### C# style
 
 ```csharp
 using ResoniteLink;
 using ResoniteLink.RPath;
+using ResoniteLink.RPath.CSharp;
 
-// Setup (same as normal)
-Console.Write("Connect to (localhost port or ws:// URL): ");
-var connectionTarget = Console.ReadLine().Trim();
-Uri targetUrl;
-
-if (int.TryParse(connectionTarget, out var port))
-{
-    targetUrl = new Uri($"ws://localhost:{port}");
-}
-else if (!Uri.TryCreate(connectionTarget, UriKind.Absolute, out targetUrl))
-{
-    Console.WriteLine("Failed to parse URL");
-    return 1;
-}
-
-if (targetUrl.Scheme != "ws")
-{
-    Console.WriteLine("Scheme must be ws (websocket)");
-    return 1;
-}
-
-var link = new LinkInterface();
-await link.Connect(targetUrl, CancellationToken.None);
-
-// build and execute query
-var query = await link.RPath() // start at root
-    .Children() // get direct children (egarly fetch component data too)
-    .Where(x => x.Name.Value == "TestSlot") // filter children with this name
-    .Components() // get the components for the filtered children
-    .OfType("FrooxEngine.ReferenceField<FrooxEngine.Slot>") // filter components with the right type
-    .Member<Reference>("Reference") // get the Reference field and cast to correct type
-    .DereferenceSlot() // Follow Reference to the slot it points to
-    .AncestorsShallow() // Get all the parents up to root (no component data)
-    .Select(x => x.Name.Value) // Get the names from the slots
-    // .ToListAsync(); // throws exception on error instead of packaging as a result
-    .ToResultAsync();
-
-// check result
-if (query.IsOk)
-{
-    Console.WriteLine("Success!");
-    Console.WriteLine(string.Join('\n', query.ResultValue.ToArray()));
-    return 0;
-}
-else
-{
-    Console.WriteLine("Error!");
-    Console.WriteLine($"Error: {query.ErrorValue.Message}");
-    return 1;
-}
+var names = await Query.Root
+    .Children(includeComponents: false)
+    .Where(slot => slot.Name.Value.Contains("Proxy"))
+    .Select(slot => slot.Name.Value)
+    .Take(10)
+    .ToArray(link);
 ```
 
-## Items to note
+## Traversal APIs
 
-- On demand: It will communicate with ResoniteLink to explore the hierarchy as it needs to.
-- No batching of requests: Each request for data is a separate request, so queries that require many fetches of new data
-  will have high latency
-- Immutable and composable: when calling a method on the builder a new one is returned instead of modifying the current
-  instance. You can use this to reuse parts of queries to create more complex behavior.
-- .NET Standard 2.0: compatible with .NET and .NET Framework (Unity)
+For `Query<Slot>`:
 
-## FSharp API
+- `children includeComponents` / `childrenLite` / `childrenFull`
+- `parent includeComponents` / `parentLite` / `parentFull`
+- `ancestors includeComponents` / `ancestorsLite` / `ancestorsFull`
+- `descendants includeComponents` / `descendantsLite` / `descendantsFull`
+- `ancestorsAndSelf includeComponents` / `ancestorsAndSelfLite` / `ancestorsAndSelfFull`
+- `descendantsAndSelf includeComponents` / `descendantsAndSelfLite` / `descendantsAndSelfFull`
 
-The underlying API is implemented in F#, and that API can be utilized directly as well. You can consume the library in
-multiple ways depending on your preference (including using the extension methods like C#).
+For a single `Slot`, the `Slot` module provides equivalent wrappers with similar names.
 
-One notable difference is that with F# API you define queries without providing the LinkInterface until you want to
-execute the query (called point free style).
+Extension methods expose traversal as `.Children(...)`, `.Parent(...)`, `.Ancestors(...)`,
+`.Descendants(...)`, `.AncestorsAndSelf(...)`, and `.DescendantsAndSelf(...)`.
 
-```fsharp
-// Using the pipe operator
-let nodesPipe =
-    root
-    |> bind childrenDeep
-    |> filter (fun x -> x.Name.Value = "TestSlot")
-    |> bind components
-    |> ofType "FrooxEngine.ReferenceField<FrooxEngine.Slot>"
-    |> getMember<Reference> "Reference"
-    |> bind dereferenceSlotShallow
-    |> bind ancestorsShallow
-    |> map _.Name.Value
-    |> toArray
-    |> run link
-    
-// Some special operators (>>=/bind and >=>/Kleisli) can be used for extra terseness
-// The >>= indicates clearly where new data is fetched from the data model
-// |> is an in-memory operation
-let nodesOperators =
-    root
-    >>= childrenDeep
-    |> filter (fun x -> x.Name.Value = "TestSlot")
-    >>= components
-    |> ofType "FrooxEngine.ReferenceField<FrooxEngine.Slot>"
-    |> getMember<Reference> "Reference"
-    >>= dereferenceSlotShallow
-    >>= ancestorsShallow
-    |> map _.Name.Value
-    |> toArray
-    |> runAsync link
+## Component and member APIs
 
-// C# style extension methods
-let nodesExtensions =
-    link
-        .RPath()
-        .Children()
-        .Where(fun x -> x.Name.Value = "TestSlot")
-        .Components()
-        .OfType("FrooxEngine.ReferenceField<FrooxEngine.Slot>")
-        .Member<Reference>("Reference")
-        .DereferenceSlot()
-        .AncestorsShallow()
-        .Select(_.Name.Value)
-        .ToListAsync()
-```
+- `Query.components` / `.Components()`
+- `Query.ofType` / `.OfType(typeName)`
+- `Query.getMember<'T>` / `.Member<'T>(memberName)`
+- `Query.dereferenceSlot`, `dereferenceSlotLite`, `dereferenceSlotFull` / `.DereferenceSlot(...)`
+- `Query.dereferenceComponent` / `.DereferenceComponent()`
+
+`getMember<'T>` / `Member<T>` skip values that are missing or incompatible with the requested member type.
+
+## Composition and shaping
+
+Query-producing composition:
+
+- `bind`
+- `Operators.(>>=)`
+- `Operators.(>=>)`
+
+Note that the bind operators do not batch any requests by themselves as you provide the mapping function. Use one of the
+axis combinators directly to get batching behavior.
+
+## Execution and error handling
+
+Execution functions:
+
+- `runAsync` / `.RunAsync(link)`
+- `run` / `.Run(link)`
+- `toArray` / `.ToArray(link)`
+- `toResizeArray` / `.ToList(link)`
+- `first` / `.First(link)`
+- `firstOr` / `.FirstOr(defaultValue, link)`
+- `toResult` / `.ToResult(link)`
+
+`toResult`/`ToResult` convert `ResoniteLinkException` to `Result.Error`.
+Exceptions thrown inside your own mapping/filtering code still propagate normally.
+
+## Notes
+
+- `take`, `skip`, and `slice` use F# sequence semantics.
+  - `take` and `skip` throw if the source sequence has too few items.
+  - Use `mapAll (Seq.truncate n)` when you need a non-throwing cap.
+- Traversal returns query results and is not server-side pagination.
+- Build queries once, execute many times by passing whichever `LinkInterface` you want at execution.

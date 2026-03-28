@@ -1,341 +1,431 @@
 namespace ResoniteLink.RPath
 
+open System.Runtime.CompilerServices
+open System.Threading.Tasks
+open ResoniteLink
+
+// F# friendly extensions on Query<T> and Slot for general transformations and slot hierarchy navigation, using F# function types.
+
+/// <summary>
+/// General transformation and execution extension methods on Query&lt;'T&gt; using F# function types.
+/// </summary>
+[<Extension>]
+type QueryExtensions =
+
+    // --- Transformations ---
+
+    /// <summary>Projects each element to a new form.</summary>
+    [<Extension>]
+    static member inline Map(query: Query<'T>, projection: 'T -> 'U) : Query<'U> = Query.map projection query
+
+    /// <summary>Transforms the entire result sequence at once.</summary>
+    [<Extension>]
+    static member inline MapAll(query: Query<'T>, projection: 'T seq -> 'U seq) : Query<'U> =
+        Query.mapAll projection query
+
+    /// <summary>Filters results to only those satisfying the predicate.</summary>
+[<Extension>]
+static member inline Filter(query: Query<'T>, predicate: 'T -> bool) : Query<'T> = Query.filter predicate query
+
+    /// <summary>Monadic bind: for each result, applies a function returning a new query and flattens all results.</summary>
+    /// <remarks>May trigger additional requests to the ResoniteLink data model.</remarks>
+    [<Extension>]
+    static member inline Bind(query: Query<'T>, binder: 'T -> Query<'U>) : Query<'U> = Query.bind binder query
+
+    /// <summary>Maps each element to a sequence and flattens the results.</summary>
+    [<Extension>]
+    static member inline FlatMap(query: Query<'T>, mapper: 'T -> 'U seq) : Query<'U> = Query.flatMap mapper query
+
+    /// <summary>Applies an async continuation to the complete result sequence.</summary>
+    [<Extension>]
+    static member inline AndThen(query: Query<'T>, continuation: 'T seq -> ValueTask<'U seq>) : Query<'U> =
+        Query.andThen continuation query
+
+    /// <summary>Takes the first N elements.</summary>
+    [<Extension>]
+    static member inline Take(query: Query<'T>, count: int) : Query<'T> = Query.take count query
+
+    /// <summary>Skips the first N elements.</summary>
+    [<Extension>]
+    static member inline Skip(query: Query<'T>, count: int) : Query<'T> = Query.skip count query
+
+    /// <summary>Gets a slice of elements between start (inclusive) and stop (exclusive) indices.</summary>
+    [<Extension>]
+    static member inline Slice(query: Query<'T>, start: int, stop: int) : Query<'T> = Query.slice (start, stop) query
+
+    /// <summary>Gets the element at the specified index.</summary>
+    [<Extension>]
+    static member inline At(query: Query<'T>, index: int) : Query<'T> = Query.itemAt index query
+
+    // --- Execution ---
+
+    /// <summary>Executes the query synchronously and returns the results as a sequence.</summary>
+    /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
+    [<Extension>]
+    static member inline Run(query: Query<'T>, link: LinkInterface) : 'T seq = Query.run link query
+
+    /// <summary>Executes the query asynchronously and returns a ValueTask of the result sequence.</summary>
+    /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
+    [<Extension>]
+    static member inline RunAsync(query: Query<'T>, link: LinkInterface) : ValueTask<'T seq> = Query.runAsync link query
+
+    /// <summary>Executes the query and packages the outcome as a Result, capturing any ResoniteLinkException.</summary>
+    [<Extension>]
+    static member inline ToResult(query: Query<'T>, link: LinkInterface) = Query.toResult query link
+
+    /// <summary>Executes the query and returns the results as an array.</summary>
+    /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
+    [<Extension>]
+    static member inline ToArray(query: Query<'T>, link: LinkInterface) : ValueTask<'T[]> = Query.toArray query link
+
+    /// <summary>Executes the query and returns the results as a ResizeArray (List&lt;T&gt;).</summary>
+    /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
+    [<Extension>]
+    static member inline ToList
+        (query: Query<'T>, link: LinkInterface)
+        : ValueTask<System.Collections.Generic.List<'T>> =
+        Query.toResizeArray query link
+
+    /// <summary>Executes the query and returns the first result, or None if the sequence is empty.</summary>
+    [<Extension>]
+    static member inline First(query: Query<'T>, link: LinkInterface) : ValueTask<'T option> = Query.first query link
+
+    /// <summary>Executes the query and returns the first result, or <paramref name="defaultValue"/> if empty.</summary>
+    [<Extension>]
+    static member inline FirstOr(query: Query<'T>, defaultValue: 'T, link: LinkInterface) : ValueTask<'T> =
+        Query.firstOr defaultValue query link
+
+/// <summary>
+/// Extension methods on Query&lt;Slot&gt; for navigating the slot hierarchy, using F# function types.
+/// </summary>
+/// <remarks>
+/// All traversal methods default to <c>includeComponents = true</c>.
+/// Pass <c>false</c> to skip fetching component data for better performance when components are not needed.
+/// </remarks>
+[<Extension>]
+type SlotQueryExtensions =
+
+    /// <summary>Gets the direct children of each slot, including component data.</summary>
+    [<Extension>]
+    static member inline Children(query: Query<Slot>) : Query<Slot> = Query.children true query
+
+    /// <summary>Gets the direct children of each slot.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline Children(query: Query<Slot>, includeComponents: bool) : Query<Slot> =
+        Query.children includeComponents query
+
+    /// <summary>Gets direct children matching the predicate, including component data.</summary>
+    [<Extension>]
+    static member inline Child(query: Query<Slot>, predicate: Slot -> bool) : Query<Slot> =
+        Query.child predicate true query
+
+    /// <summary>Gets direct children matching the predicate.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline Child(query: Query<Slot>, predicate: Slot -> bool, includeComponents: bool) : Query<Slot> =
+        Query.child predicate includeComponents query
+
+    /// <summary>Gets the parent of each slot, including component data.</summary>
+    [<Extension>]
+    static member inline Parent(query: Query<Slot>) : Query<Slot> = Query.parent true query
+
+    /// <summary>Gets the parent of each slot.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline Parent(query: Query<Slot>, includeComponents: bool) : Query<Slot> =
+        Query.parent includeComponents query
+
+    /// <summary>Gets all ancestors (parent, grandparent, etc.) of each slot, including component data.</summary>
+    [<Extension>]
+    static member inline Ancestors(query: Query<Slot>) : Query<Slot> = Query.ancestors true query
+
+    /// <summary>Gets all ancestors (parent, grandparent, etc.) of each slot.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline Ancestors(query: Query<Slot>, includeComponents: bool) : Query<Slot> =
+        Query.ancestors includeComponents query
+
+    /// <summary>Gets each slot and all of its ancestors, including component data.</summary>
+    [<Extension>]
+    static member inline AncestorsAndSelf(query: Query<Slot>) : Query<Slot> = Query.ancestorsAndSelf true query
+
+    /// <summary>Gets each slot and all of its ancestors.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline AncestorsAndSelf(query: Query<Slot>, includeComponents: bool) : Query<Slot> =
+        Query.ancestorsAndSelf includeComponents query
+
+    /// <summary>Gets all descendants (children, grandchildren, etc.) of each slot, including component data.</summary>
+    [<Extension>]
+    static member inline Descendants(query: Query<Slot>) : Query<Slot> = Query.descendants true query
+
+    /// <summary>Gets all descendants (children, grandchildren, etc.) of each slot.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline Descendants(query: Query<Slot>, includeComponents: bool) : Query<Slot> =
+        Query.descendants includeComponents query
+
+    /// <summary>Gets each slot and all of its descendants, including component data.</summary>
+    [<Extension>]
+    static member inline DescendantsAndSelf(query: Query<Slot>) : Query<Slot> = Query.descendantsAndSelf true query
+
+    /// <summary>Gets each slot and all of its descendants.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline DescendantsAndSelf(query: Query<Slot>, includeComponents: bool) : Query<Slot> =
+        Query.descendantsAndSelf includeComponents query
+
+    /// <summary>Gets the components attached to each slot, fetching from the model if not already loaded.</summary>
+    [<Extension>]
+    static member inline Components(query: Query<Slot>) : Query<Component> = Query.components query
+
+
+/// <summary>
+/// Extension methods on Slot for navigating the slot hierarchy, using F# function types.
+/// </summary>
+/// <remarks>
+/// All traversal methods default to <c>includeComponents = true</c>.
+/// Pass <c>false</c> to skip fetching component data for better performance when components are not needed.
+/// </remarks>
+[<Extension>]
+type SlotExtensions =
+
+    /// <summary>Gets the direct children of the slot, including component data.</summary>
+    [<Extension>]
+    static member inline Children(slot: Slot) : Query<Slot> = Query.wrap slot |> Query.children true
+
+    /// <summary>Gets the direct children of the slot.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline Children(slot: Slot, includeComponents: bool) : Query<Slot> =
+        Query.wrap slot |> Query.children includeComponents
+
+    /// <summary>Gets direct children matching the predicate, including component data.</summary>
+    [<Extension>]
+    static member inline Child(slot: Slot, predicate: Slot -> bool) : Query<Slot> =
+        Query.wrap slot |> Query.child predicate true
+
+    /// <summary>Gets direct children matching the predicate.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline Child(slot: Slot, predicate: Slot -> bool, includeComponents: bool) : Query<Slot> =
+        Query.wrap slot |> Query.child predicate includeComponents
+
+    /// <summary>Gets the parent of the slot, including component data.</summary>
+    [<Extension>]
+    static member inline Parent(slot: Slot) : Query<Slot> = Query.wrap slot |> Query.parent true
+
+    /// <summary>Gets the parent of the slot.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline Parent(slot: Slot, includeComponents: bool) : Query<Slot> =
+        Query.wrap slot |> Query.parent includeComponents
+
+    /// <summary>Gets all ancestors (parent, grandparent, etc.) of the slot, including component data.</summary>
+    [<Extension>]
+    static member inline Ancestors(slot: Slot) : Query<Slot> = Query.wrap slot |> Query.ancestors true
+
+    /// <summary>Gets all ancestors (parent, grandparent, etc.) of the slot.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline Ancestors(slot: Slot, includeComponents: bool) : Query<Slot> =
+        Query.wrap slot |> Query.ancestors includeComponents
+
+    /// <summary>Gets the slot and all of its ancestors, including component data.</summary>
+    [<Extension>]
+    static member inline AncestorsAndSelf(slot: Slot) : Query<Slot> =
+        Query.wrap slot |> Query.ancestorsAndSelf true
+
+    /// <summary>Gets the slot and all of its ancestors.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline AncestorsAndSelf(slot: Slot, includeComponents: bool) : Query<Slot> =
+        Query.wrap slot |> Query.ancestorsAndSelf includeComponents
+
+    /// <summary>Gets all descendants (children, grandchildren, etc.) of the slot, including component data.</summary>
+    [<Extension>]
+    static member inline Descendants(slot: Slot) : Query<Slot> =
+        Query.wrap slot |> Query.descendants true
+
+    /// <summary>Gets all descendants (children, grandchildren, etc.) of the slot.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline Descendants(slot: Slot, includeComponents: bool) : Query<Slot> =
+        Query.wrap slot |> Query.descendants includeComponents
+
+    /// <summary>Gets the slot and all of its descendants, including component data.</summary>
+    [<Extension>]
+    static member inline DescendantsAndSelf(slot: Slot) : Query<Slot> =
+        Query.wrap slot |> Query.descendantsAndSelf true
+
+    /// <summary>Gets the slot and all of its descendants.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline DescendantsAndSelf(slot: Slot, includeComponents: bool) : Query<Slot> =
+        Query.wrap slot |> Query.descendantsAndSelf includeComponents
+
+    /// <summary>Gets the components attached to the slot, fetching from the model if not already loaded.</summary>
+    [<Extension>]
+    static member inline Components(slot: Slot) : Query<Component> = Query.wrap slot |> Query.components
+
+
+/// <summary>
+/// Extension methods on Query&lt;Component&gt; for filtering components and accessing their members.
+/// </summary>
+[<Extension>]
+type ComponentQueryExtensions =
+
+    /// <summary>Filters components to only those matching the fully-qualified type name.</summary>
+    /// <param name="typeName">e.g. <c>"FrooxEngine.ReferenceField&lt;FrooxEngine.Slot&gt;"</c></param>
+    [<Extension>]
+    static member inline OfType(query: Query<Component>, typeName: string) : Query<Component> =
+        Query.ofType typeName query
+
+    /// <summary>Gets a member by name from each component, filtered to the specified member type.</summary>
+    /// <remarks>Components without a matching member or with an incompatible type are excluded from results.</remarks>
+    [<Extension>]
+    static member inline Member<'T when 'T :> ResoniteLink.Member>
+        (query: Query<Component>, memberName: string)
+        : Query<'T> =
+        Query.getMember<'T> memberName query
+
+
+/// <summary>
+/// Extension methods on Query&lt;Reference&gt; for dereferencing references to their target data model objects.
+/// </summary>
+[<Extension>]
+type ReferenceQueryExtensions =
+
+    /// <summary>Dereferences slot references to the target slots, including component data.</summary>
+    [<Extension>]
+    static member inline DereferenceSlot(query: Query<Reference>) : Query<Slot> = Query.dereferenceSlot true query
+
+    /// <summary>Dereferences slot references to the target slots.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline DereferenceSlot(query: Query<Reference>, includeComponents: bool) : Query<Slot> =
+        Query.dereferenceSlot includeComponents query
+
+    /// <summary>Dereferences component references to the target components.</summary>
+    [<Extension>]
+    static member inline DereferenceComponent(query: Query<Reference>) : Query<Component> =
+        Query.dereferenceComponent query
+
+
+/// <summary>
+/// Extension methods on Reference for dereferencing to target data model objects.
+/// </summary>
+[<Extension>]
+type ReferenceExtensions =
+
+    /// <summary>Dereferences a slot reference to the target slot, including component data.</summary>
+    [<Extension>]
+    static member inline DereferenceSlot(referenceValue: Reference) : Query<Slot> =
+        Query.wrap referenceValue |> Query.dereferenceSlot true
+
+    /// <summary>Dereferences a slot reference to the target slot.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
+    [<Extension>]
+    static member inline DereferenceSlot(referenceValue: Reference, includeComponents: bool) : Query<Slot> =
+        Query.wrap referenceValue |> Query.dereferenceSlot includeComponents
+
+    /// <summary>Dereferences a component reference to the target component.</summary>
+    [<Extension>]
+    static member inline DereferenceComponent(referenceValue: Reference) : Query<Component> =
+        Query.wrap referenceValue |> Query.dereferenceComponent
+
+
+// Recommended C# imports:
+//   using ResoniteLink.RPath;        // Query<T> type + zero-arg extensions + execution
+//   using ResoniteLink.RPath.CSharp; // Func<>-accepting overloads (Select, Where, etc.)
+
+namespace ResoniteLink.RPath.CSharp
+
 open System
 open System.Runtime.CompilerServices
 open System.Threading.Tasks
 open ResoniteLink
 open ResoniteLink.RPath
 
+
 /// <summary>
-/// A builder type that holds a link interface and an RPath query, enabling fluent LINQ-style method chaining.
+/// C# extension methods on Query&lt;T&gt; for general transformations, using <see cref="Func{T,TResult}"/> delegate types.
 /// </summary>
-/// <typeparam name="T">The type of elements produced by the query.</typeparam>
 /// <remarks>
-/// Use the extension method <c>RPath()</c> on a LinkInterface to create an RPathBuilder starting at the root slot.
-/// Chain methods like <c>Children()</c>, <c>Where()</c>, <c>Select()</c>, etc. to build queries.
-/// Execute with <c>ToListAsync()</c>, <c>ToArrayAsync()</c>, or <c>ToResultAsync()</c>.
+/// Zero-arg operations (<c>Take</c>, <c>Skip</c>, <c>At</c>, <c>Slice</c>) and all execution methods
+/// (<c>Run</c>, <c>ToList</c>, <c>ToArray</c>, etc.) are available via <c>using ResoniteLink.RPath</c>.
 /// </remarks>
-[<Struct>]
-type RPathBuilder<'T> =
-    {
-        /// <summary>The link interface used to execute the query.</summary>
-        Link: LinkInterface
-        /// <summary>The underlying RPath query function.</summary>
-        RunWith: RPath<'T>
-    }
+[<Extension>]
+type QueryCSharpExtensions =
+
+    /// <summary>Projects each element to a new form.</summary>
+    [<Extension>]
+    static member inline Select(query: Query<'T>, projection: Func<'T, 'U>) : Query<'U> =
+        Query.map projection.Invoke query
+
+    /// <summary>Transforms the entire result sequence at once.</summary>
+    [<Extension>]
+    static member inline SelectAll(query: Query<'T>, projection: Func<'T seq, 'U seq>) : Query<'U> =
+        Query.mapAll projection.Invoke query
+
+    /// <summary>Filters results to only those satisfying the predicate.</summary>
+    [<Extension>]
+    static member inline Where(query: Query<'T>, predicate: Func<'T, bool>) : Query<'T> =
+        Query.filter predicate.Invoke query
+
+    /// <summary>Monadic bind: for each result, applies a function returning a new query and flattens all results.</summary>
+    /// <remarks>May trigger additional requests to the ResoniteLink data model.</remarks>
+    [<Extension>]
+    static member inline Bind(query: Query<'T>, binder: Func<'T, Query<'U>>) : Query<'U> =
+        Query.bind binder.Invoke query
+
+    /// <summary>Projects each element to a sequence and flattens the results (equivalent to LINQ SelectMany).</summary>
+    [<Extension>]
+    static member inline SelectMany(query: Query<'T>, collector: Func<'T, 'U seq>) : Query<'U> =
+        Query.flatMap collector.Invoke query
+
+    /// <summary>Applies an async continuation to the complete result sequence.</summary>
+    [<Extension>]
+    static member inline AndThen(query: Query<'T>, continuation: Func<'T seq, ValueTask<'U seq>>) : Query<'U> =
+        Query.andThen continuation.Invoke query
+
 
 /// <summary>
-/// Extension methods for starting RPath queries from a LinkInterface.
+/// C# extension methods on Query&lt;Slot&gt; for callback-accepting slot operations, using <see cref="Func{T,TResult}"/> types.
 /// </summary>
+/// <remarks>
+/// Zero-arg traversal methods (<c>Children</c>, <c>Parent</c>, <c>Descendants</c>, etc.) and their
+/// <c>bool includeComponents</c> overloads are available via <c>using ResoniteLink.RPath</c>.
+/// </remarks>
 [<Extension>]
-type LinkInterfaceExtensions =
-    /// <summary>
-    /// Creates an RPathBuilder starting at the root slot.
-    /// </summary>
-    /// <param name="linkInterface">The link interface to use for query execution.</param>
-    /// <returns>An RPathBuilder positioned at the root slot.</returns>
+type SlotQueryCSharpExtensions =
+
+    /// <summary>Gets direct children matching the predicate, including component data.</summary>
     [<Extension>]
-    static member inline RPath(linkInterface: LinkInterface) =
-        { Link = linkInterface
-          RunWith = RPath.root }
+    static member inline Child(query: Query<Slot>, predicate: Func<Slot, bool>) : Query<Slot> =
+        Query.child predicate.Invoke true query
 
-    /// <summary>
-    /// Creates an RPathBuilder starting with a specific initial value.
-    /// </summary>
-    /// <param name="linkInterface">The link interface to use for query execution.</param>
-    /// <param name="initialValue">The initial value to start the query with.</param>
-    /// <returns>An RPathBuilder containing the initial value.</returns>
+    /// <summary>Gets direct children matching the predicate.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
     [<Extension>]
-    static member inline RPath(linkInterface: LinkInterface, initialValue) =
-        { Link = linkInterface
-          RunWith = RPath.wrap initialValue }
+    static member inline Child(query: Query<Slot>, predicate: Func<Slot, bool>, includeComponents: bool) : Query<Slot> =
+        Query.child predicate.Invoke includeComponents query
 
-type RPathBuilder<'T> with
-    /// <summary>
-    /// Projects each element of the query to a new form.
-    /// </summary>
-    /// <param name="projection">A function to apply to each element.</param>
-    /// <returns>A new RPathBuilder with the projected elements.</returns>
-    member inline this.Select(projection: Func<'T, 'U>) =
-        { Link = this.Link
-          RunWith = RPath.map projection.Invoke this.RunWith }
-
-    /// <summary>
-    /// Applies a transformation to the entire result sequence.
-    /// </summary>
-    /// <param name="projection">A function to apply to the result sequence.</param>
-    /// <returns>A new RPathBuilder with the transformed results.</returns>
-    member inline this.SelectAll(projection: Func<'T seq, 'U seq>) =
-        { Link = this.Link
-          RunWith = RPath.mapAll projection.Invoke this.RunWith }
-
-    /// <summary>
-    /// Filters the query results based on a predicate.
-    /// </summary>
-    /// <param name="predicate">A function to test each element.</param>
-    /// <returns>A new RPathBuilder containing only elements that satisfy the predicate.</returns>
-    member inline this.Where(predicate: Func<'T, bool>) =
-        { Link = this.Link
-          RunWith = RPath.filter predicate.Invoke this.RunWith }
-
-    /// <summary>
-    /// Applies a continuation function to the complete result sequence.
-    /// </summary>
-    /// <param name="continuation">A function that takes the result sequence and returns a new async sequence.</param>
-    /// <returns>A new RPathBuilder with results from the continuation.</returns>
-    member inline this.AndThen(continuation: Func<'T seq, ValueTask<'U seq>>) =
-        { Link = this.Link
-          RunWith = RPath.andThen continuation.Invoke this.RunWith }
-
-    /// <summary>
-    /// Projects each element to a new query and flattens the results.
-    /// </summary>
-    /// <param name="collector">A function that returns a query for each element.</param>
-    /// <returns>A new RPathBuilder with flattened results.</returns>
-    /// <remarks>This operation may trigger additional requests to the ResoniteLink data model.</remarks>
-    member inline this.SelectMany(collector: Func<'T, RPath<'U>>) =
-        { Link = this.Link
-          RunWith = RPath.bind collector.Invoke this.RunWith }
-
-    /// <summary>
-    /// Takes the first N elements from the query results.
-    /// </summary>
-    /// <param name="count">The number of elements to take.</param>
-    /// <returns>A new RPathBuilder with at most the specified number of elements.</returns>
-    member inline this.Take(count: int) =
-        { Link = this.Link
-          RunWith = RPath.take count this.RunWith }
-
-    /// <summary>
-    /// Skips the first N elements from the query results.
-    /// </summary>
-    /// <param name="count">The number of elements to skip.</param>
-    /// <returns>A new RPathBuilder with elements after the skipped ones.</returns>
-    member inline this.Skip(count: int) =
-        { Link = this.Link
-          RunWith = RPath.skip count this.RunWith }
-
-    /// <summary>
-    /// Gets a slice of elements from start to stop index.
-    /// </summary>
-    /// <param name="start">The start index (inclusive).</param>
-    /// <param name="stop">The stop index (exclusive).</param>
-    /// <returns>A new RPathBuilder with elements in the specified range.</returns>
-    member inline this.Slice(start: int, stop: int) =
-        { Link = this.Link
-          RunWith = RPath.slice (start, stop) this.RunWith }
-
-    /// <summary>
-    /// Executes the query and returns a Result containing either the results or an error.
-    /// </summary>
-    /// <returns>A ValueTask containing Ok with the result sequence, or Error with the exception.</returns>
-    member inline this.ToResultAsync() = RPath.toResult this.RunWith this.Link
-
-    /// <summary>
-    /// Executes the query and returns the results as an array.
-    /// </summary>
-    /// <returns>A ValueTask containing the result array.</returns>
-    /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    member inline this.ToArrayAsync() = RPath.toArray this.RunWith this.Link
-
-    /// <summary>
-    /// Executes the query and returns the results as a sequence.
-    /// </summary>
-    /// <returns>A ValueTask containing the result sequence.</returns>
-    /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    member inline this.AsEnumerableAsync() = RPath.toSeq this.RunWith this.Link
-
-    /// <summary>
-    /// Executes the query and returns the results as a List&lt;T&gt;.
-    /// </summary>
-    /// <returns>A ValueTask containing the results as a mutable list.</returns>
-    /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    member inline this.ToListAsync() =
-        RPath.toResizeArray this.RunWith this.Link
 
 /// <summary>
-/// Extension methods for dereferencing Reference values in RPath queries.
+/// C# extension methods on Slot for callback-accepting slot operations, using <see cref="Func{T,TResult}"/> types.
 /// </summary>
 [<Extension>]
-type ReferenceBuilderExtensions =
-    /// <summary>
-    /// Dereferences slot references to get the target slots with full component data.
-    /// </summary>
-    /// <param name="referenceQuery">The query containing Reference values.</param>
-    /// <returns>An RPathBuilder containing the dereferenced slots with component data.</returns>
-    [<Extension>]
-    static member inline DereferenceSlot(referenceQuery: RPathBuilder<Reference>) =
-        { Link = referenceQuery.Link
-          RunWith = RPath.bind RPath.dereferenceSlotDeep referenceQuery.RunWith }
+type SlotCSharpExtensions =
 
-    /// <summary>
-    /// Dereferences slot references to get the target slots without component data.
-    /// </summary>
-    /// <param name="referenceQuery">The query containing Reference values.</param>
-    /// <returns>An RPathBuilder containing the dereferenced slots (reference only).</returns>
+    /// <summary>Gets direct children matching the predicate, including component data.</summary>
     [<Extension>]
-    static member inline DereferenceSlotShallow(referenceQuery: RPathBuilder<Reference>) =
-        { Link = referenceQuery.Link
-          RunWith = RPath.bind RPath.dereferenceSlotShallow referenceQuery.RunWith }
+    static member inline Child(slot: Slot, predicate: Func<Slot, bool>) : Query<Slot> =
+        Query.wrap slot |> Query.child predicate.Invoke true
 
-    /// <summary>
-    /// Dereferences component references to get the target components.
-    /// </summary>
-    /// <param name="referenceQuery">The query containing Reference values.</param>
-    /// <returns>An RPathBuilder containing the dereferenced components.</returns>
+    /// <summary>Gets direct children matching the predicate.</summary>
+    /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
     [<Extension>]
-    static member inline DereferenceComponent(referenceQuery: RPathBuilder<Reference>) =
-        { Link = referenceQuery.Link
-          RunWith = RPath.bind RPath.dereferenceComponent referenceQuery.RunWith }
-
-/// <summary>
-/// Extension methods for navigating slot hierarchies in RPath queries.
-/// </summary>
-[<Extension>]
-type SlotQueryBuilderExtensions =
-    /// <summary>
-    /// Gets the direct children of each slot with full component data.
-    /// </summary>
-    /// <param name="slotQuery">The query containing Slot values.</param>
-    /// <returns>An RPathBuilder containing the child slots with component data.</returns>
-    [<Extension>]
-    static member inline Children(slotQuery: RPathBuilder<Slot>) =
-        { Link = slotQuery.Link
-          RunWith = RPath.bind RPath.childrenDeep slotQuery.RunWith }
-
-    /// <summary>
-    /// Gets the direct children of a slot that satisfy a predicate. The same as using Children then Where.
-    /// </summary>
-    /// <param name="slotQuery">The current query</param>
-    /// <param name="childPredicate">The filter function</param>
-    [<Extension>]
-    static member inline Child(slotQuery: RPathBuilder<Slot>, childPredicate: Func<Slot, bool>) =
-        { Link = slotQuery.Link
-          RunWith = RPath.bind (RPath.child childPredicate.Invoke) slotQuery.RunWith }
-
-    /// <summary>
-    /// Gets the parent of each slot with full component data.
-    /// </summary>
-    /// <param name="slotQuery">The query containing Slot values.</param>
-    /// <returns>An RPathBuilder containing the parent slots with component data.</returns>
-    [<Extension>]
-    static member inline Parent(slotQuery: RPathBuilder<Slot>) =
-        { Link = slotQuery.Link
-          RunWith = RPath.bind RPath.parentDeep slotQuery.RunWith }
-
-    /// <summary>
-    /// Gets all ancestors of each slot (parent, grandparent, etc.) with full component data.
-    /// </summary>
-    /// <param name="slotQuery">The query containing Slot values.</param>
-    /// <returns>An RPathBuilder containing all ancestor slots with component data.</returns>
-    [<Extension>]
-    static member inline Ancestors(slotQuery: RPathBuilder<Slot>) =
-        { Link = slotQuery.Link
-          RunWith = RPath.bind RPath.ancestorsDeep slotQuery.RunWith }
-
-    /// <summary>
-    /// Gets all descendants of each slot (children, grandchildren, etc.) with full component data.
-    /// </summary>
-    /// <param name="slotQuery">The query containing Slot values.</param>
-    /// <returns>An RPathBuilder containing all descendant slots with component data.</returns>
-    [<Extension>]
-    static member inline Descendants(slotQuery: RPathBuilder<Slot>) =
-        { Link = slotQuery.Link
-          RunWith = RPath.bind RPath.descendantsDeep slotQuery.RunWith }
-
-    /// <summary>
-    /// Gets the direct children of each slot without component data.
-    /// </summary>
-    /// <param name="slotQuery">The query containing Slot values.</param>
-    /// <returns>An RPathBuilder containing the child slots (reference only).</returns>
-    [<Extension>]
-    static member inline ChildrenShallow(slotQuery: RPathBuilder<Slot>) =
-        { Link = slotQuery.Link
-          RunWith = RPath.bind RPath.childrenShallow slotQuery.RunWith }
-
-    /// <summary>
-    /// Gets the parent of each slot without component data.
-    /// </summary>
-    /// <param name="slotQuery">The query containing Slot values.</param>
-    /// <returns>An RPathBuilder containing the parent slots (reference only).</returns>
-    [<Extension>]
-    static member inline ParentShallow(slotQuery: RPathBuilder<Slot>) =
-        { Link = slotQuery.Link
-          RunWith = RPath.bind RPath.parentShallow slotQuery.RunWith }
-
-    /// <summary>
-    /// Gets all ancestors of each slot without component data.
-    /// </summary>
-    /// <param name="slotQuery">The query containing Slot values.</param>
-    /// <returns>An RPathBuilder containing all ancestor slots (reference only).</returns>
-    [<Extension>]
-    static member inline AncestorsShallow(slotQuery: RPathBuilder<Slot>) =
-        { Link = slotQuery.Link
-          RunWith = RPath.bind RPath.ancestorsShallow slotQuery.RunWith }
-
-    /// <summary>
-    /// Gets all descendants of each slot without component data.
-    /// </summary>
-    /// <param name="slotQuery">The query containing Slot values.</param>
-    /// <returns>An RPathBuilder containing all descendant slots (reference only).</returns>
-    [<Extension>]
-    static member inline DescendantsShallow(slotQuery: RPathBuilder<Slot>) =
-        { Link = slotQuery.Link
-          RunWith = RPath.bind RPath.descendantsShallow slotQuery.RunWith }
-
-    /// <summary>
-    /// Gets the components attached to each slot.
-    /// </summary>
-    /// <param name="slotQuery">The query containing Slot values.</param>
-    /// <returns>An RPathBuilder containing all components from the slots.</returns>
-    [<Extension>]
-    static member inline Components(slotQuery: RPathBuilder<Slot>) =
-        { Link = slotQuery.Link
-          RunWith = RPath.bind RPath.components slotQuery.RunWith }
-
-/// <summary>
-/// Extension methods for working with enumerable results in RPath queries.
-/// </summary>
-[<Extension>]
-type EnumerableQueryBuilderExtensions =
-    /// <summary>
-    /// Projects each element to a sequence and flattens the results.
-    /// </summary>
-    /// <param name="items">The query containing sequence values.</param>
-    /// <param name="collector">A function that maps each element to a sequence.</param>
-    /// <returns>An RPathBuilder with flattened results.</returns>
-    [<Extension>]
-    static member inline SelectMany(items: RPathBuilder<'T seq>, collector: Func<'T, 'U seq>) =
-        { Link = items.Link
-          RunWith = RPath.flatmap collector.Invoke items.RunWith }
-
-/// <summary>
-/// Extension methods for working with Component queries in RPath.
-/// </summary>
-[<Extension>]
-type ComponentQueryBuilderExtensions =
-    /// <summary>
-    /// Filters components to only include those of the specified type.
-    /// </summary>
-    /// <param name="componentQuery">The query containing Component values.</param>
-    /// <param name="componentTypeName">The fully qualified type name of the component (e.g., "FrooxEngine.ReferenceField&lt;FrooxEngine.Slot&gt;").</param>
-    /// <returns>An RPathBuilder containing only components matching the specified type.</returns>
-    [<Extension>]
-    static member inline OfType(componentQuery: RPathBuilder<Component>, componentTypeName: string) =
-        { Link = componentQuery.Link
-          RunWith = RPath.ofType componentTypeName componentQuery.RunWith }
-
-    /// <summary>
-    /// Gets a member from each component by name and casts it to the specified type.
-    /// </summary>
-    /// <typeparam name="T">The expected member type (must inherit from ResoniteLink.Member).</typeparam>
-    /// <param name="componentQuery">The query containing Component values.</param>
-    /// <param name="memberName">The name of the member to retrieve.</param>
-    /// <returns>An RPathBuilder containing the typed members.</returns>
-    /// <remarks>Components without a matching member or with a member of incompatible type are excluded from results.</remarks>
-    [<Extension>]
-    static member inline Member<'T when 'T :> ResoniteLink.Member>
-        (componentQuery: RPathBuilder<Component>, memberName: string)
-        =
-        { Link = componentQuery.Link
-          RunWith = RPath.getMember<'T> memberName componentQuery.RunWith }
+    static member inline Child(slot: Slot, predicate: Func<Slot, bool>, includeComponents: bool) : Query<Slot> =
+        Query.wrap slot |> Query.child predicate.Invoke includeComponents
