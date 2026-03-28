@@ -1,5 +1,6 @@
 namespace ResoniteLink.RPath
 
+open System
 open ResoniteLink
 
 /// <summary>
@@ -72,3 +73,109 @@ module Slot =
 
     /// <summary>Gets the slot and all of its ancestors with full component data.</summary>
     let ancestorsAndSelfFull (slot: Slot) : Query<Slot> = ancestorsAndSelf true slot
+
+    let private normalizeFreshId (id: string) =
+        if isNull id then
+            id
+        elif id.StartsWith Reso.FreshIdPrefix then
+            id.Substring Reso.FreshIdPrefix.Length
+        else
+            id
+
+    let private parentIdOrThrow (slot: Slot) =
+        if isNull slot || isNull slot.Parent || isNull slot.Parent.TargetID then
+            invalidArg (nameof slot) "slot.Parent.TargetID is required for patch operations."
+
+        slot.Parent.TargetID
+
+    /// Create a shallow copy without children/components because API operations are flat.
+    let private copySlotLite (slot: Slot) : Slot =
+        Slot(
+            ID = slot.ID,
+            Parent = slot.Parent,
+            Name = slot.Name,
+            IsActive = slot.IsActive,
+            IsPersistent = slot.IsPersistent,
+            Tag = slot.Tag,
+            Position = slot.Position,
+            Rotation = slot.Rotation,
+            Scale = slot.Scale,
+            OrderOffset = slot.OrderOffset
+        )
+
+    let rec private flattenNodeDirect (parentId: string) (slot: Slot) : seq<DataModelOperation> =
+        seq {
+            slot.Parent <- Reference(TargetID = parentId)
+
+            if isNull slot.ID then
+                slot.ID <- Guid.NewGuid().ToString()
+
+            yield AddSlot(Data = copySlotLite slot)
+
+            if not (isNull slot.Components) then
+                for comp in slot.Components do
+                    if isNull comp.ID then
+                        comp.ID <- Guid.NewGuid().ToString()
+
+                    yield AddComponent(Data = comp, ContainerSlotId = slot.ID)
+
+            if not (isNull slot.Children) then
+                for child in slot.Children do
+                    yield! flattenNodeDirect slot.ID child
+        }
+
+    let rec private flattenNode (parentId: string) (slot: Slot) : seq<DataModelOperation> =
+        assert (isNull parentId |> not)
+
+        seq {
+            slot.Parent <- Reference(TargetID = normalizeFreshId parentId)
+
+            if isNull slot.ID then
+                slot.ID <- Guid.NewGuid().ToString()
+                yield AddSlot(Data = copySlotLite slot)
+            elif slot.ID.StartsWith Reso.FreshIdPrefix then
+                slot.ID <- slot.ID.Substring Reso.FreshIdPrefix.Length
+                yield AddSlot(Data = copySlotLite slot)
+            else
+                yield UpdateSlot(Data = copySlotLite slot)
+
+            if not (isNull slot.Components) then
+                for comp in slot.Components do
+                    if isNull comp.ID then
+                        yield AddComponent(Data = comp, ContainerSlotId = slot.ID)
+                    elif comp.ID.StartsWith Reso.FreshIdPrefix then
+                        comp.ID <- comp.ID.Substring Reso.FreshIdPrefix.Length
+                        yield AddComponent(Data = comp, ContainerSlotId = slot.ID)
+                    else
+                        yield UpdateComponent(Data = comp)
+
+            if not (isNull slot.Children) then
+                for child in slot.Children do
+                    yield! flattenNode slot.ID child
+        }
+
+    /// <summary>
+    /// Flattens a slot tree into Add operations under the supplied parent ID.
+    /// </summary>
+    let addUnder (parentId: string) (slot: Slot) : ResizeArray<DataModelOperation> =
+        flattenNodeDirect parentId slot |> ResizeArray
+
+    /// <summary>
+    /// Flattens multiple slot trees into Add operations under the supplied parent ID.
+    /// </summary>
+    let addSlotsUnder (parentId: string) (slots: #seq<Slot>) : ResizeArray<DataModelOperation> =
+        slots |> Seq.collect (flattenNodeDirect parentId) |> ResizeArray
+
+    /// <summary>
+    /// Flattens a slot tree into Add/Update operations based on ID semantics.
+    /// </summary>
+    let patch (slot: Slot) : ResizeArray<DataModelOperation> =
+        flattenNode (parentIdOrThrow slot) slot |> ResizeArray
+
+    /// <summary>
+    /// Flattens multiple slot trees into Add/Update operations based on ID semantics.
+    /// </summary>
+    let patchSlots (slots: #seq<Slot>) : ResizeArray<DataModelOperation> =
+        slots
+        |> Seq.collect (fun slot -> flattenNode (parentIdOrThrow slot) slot)
+        |> ResizeArray

@@ -23,16 +23,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="README.md" Pack="true" PackagePath="/"/>
-    </ItemGroup>
-
-    <ItemGroup>
         <PackageReference Include="FParsec" Version="1.1.1"/>
         <PackageReference Include="YellowDogMan.ResoniteLink" Version="0.9.3"/>
     </ItemGroup>
 
     <ItemGroup>
         <Compile Include="Query.fs"/>
+        <Compile Include="Reso.fs"/>
         <Compile Include="Slot.fs"/>
         <Compile Include="Extensions.fs"/>
     </ItemGroup>

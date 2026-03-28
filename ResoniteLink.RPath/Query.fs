@@ -321,9 +321,9 @@ module Query =
         q (fun link ->
             task {
                 let! sourceSlots = slotQuery.RunQuery link
-let sourceSlotIDs = sourceSlots |> Seq.map _.ID |> Seq.toArray
-let! hydratedTrees = runGetSlotBatch includeComponents -1 sourceSlotIDs link
-return hydratedTrees |> Seq.collect collectChildrenRecursive
+                let sourceSlotIDs = sourceSlots |> Seq.map _.ID |> Seq.toArray
+                let! hydratedTrees = runGetSlotBatch includeComponents -1 sourceSlotIDs link
+                return hydratedTrees |> Seq.collect collectChildrenRecursive
             }
             |> ValueTask<Slot seq>)
 

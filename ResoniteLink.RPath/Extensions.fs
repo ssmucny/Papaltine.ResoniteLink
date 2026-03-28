@@ -24,8 +24,8 @@ type QueryExtensions =
         Query.mapAll projection query
 
     /// <summary>Filters results to only those satisfying the predicate.</summary>
-[<Extension>]
-static member inline Filter(query: Query<'T>, predicate: 'T -> bool) : Query<'T> = Query.filter predicate query
+    [<Extension>]
+    static member inline Filter(query: Query<'T>, predicate: 'T -> bool) : Query<'T> = Query.filter predicate query
 
     /// <summary>Monadic bind: for each result, applies a function returning a new query and flattens all results.</summary>
     /// <remarks>May trigger additional requests to the ResoniteLink data model.</remarks>
@@ -193,12 +193,12 @@ type SlotExtensions =
 
     /// <summary>Gets the direct children of the slot, including component data.</summary>
     [<Extension>]
-    static member inline Children(slot: Slot) : Query<Slot> = Query.wrap slot |> Query.children true
+    static member inline GetChildren(slot: Slot) : Query<Slot> = Query.wrap slot |> Query.children true
 
     /// <summary>Gets the direct children of the slot.</summary>
     /// <param name="includeComponents">When <c>false</c>, omits component data for better performance.</param>
     [<Extension>]
-    static member inline Children(slot: Slot, includeComponents: bool) : Query<Slot> =
+    static member inline GetChildren(slot: Slot, includeComponents: bool) : Query<Slot> =
         Query.wrap slot |> Query.children includeComponents
 
     /// <summary>Gets direct children matching the predicate, including component data.</summary>
@@ -267,7 +267,7 @@ type SlotExtensions =
 
     /// <summary>Gets the components attached to the slot, fetching from the model if not already loaded.</summary>
     [<Extension>]
-    static member inline Components(slot: Slot) : Query<Component> = Query.wrap slot |> Query.components
+    static member inline GetComponents(slot: Slot) : Query<Component> = Query.wrap slot |> Query.components
 
 
 /// <summary>
