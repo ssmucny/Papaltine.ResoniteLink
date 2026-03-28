@@ -632,7 +632,7 @@ module Query =
     /// <remarks>
     /// Exceptions thrown by user-provided projection/filter code are not wrapped and continue to propagate.
     /// </remarks>
-    let inline toResult (query: Query<'T>) (link: LinkInterface) =
+    let inline toResult (link: LinkInterface) (query: Query<'T>) =
         task {
             try
                 let! result = query.RunQuery link
@@ -646,13 +646,13 @@ module Query =
     /// Executes a query and returns the results as a sequence.
     /// </summary>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    let inline toSeq (query: Query<'T>) (link: LinkInterface) = query.RunQuery link
+    let inline toSeq (link: LinkInterface) (query: Query<'T>) = query.RunQuery link
 
     /// <summary>
     /// Executes a query and returns the results as an array.
     /// </summary>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    let inline toArray (query: Query<'T>) (link: LinkInterface) =
+    let inline toArray (link: LinkInterface) (query: Query<'T>) =
         task {
             let! items = query.RunQuery link
             return (Seq.toArray items)
@@ -663,7 +663,7 @@ module Query =
     /// Executes a query and returns the results as a ResizeArray (List&lt;T&gt;).
     /// </summary>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    let inline toResizeArray (query: Query<'T>) (link: LinkInterface) =
+    let inline toResizeArray (link: LinkInterface) (query: Query<'T>) =
         task {
             let! items = query.RunQuery link
             return (ResizeArray items)
@@ -677,7 +677,7 @@ module Query =
     /// <param name="link">The active ResoniteLink interface used to execute the query.</param>
     /// <returns>The first result wrapped in <c>Some</c>, or <c>None</c> when the query is empty.</returns>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    let inline first (query: Query<'T>) (link: LinkInterface) =
+    let inline first (link: LinkInterface) (query: Query<'T>) =
         task {
             let! items = query.RunQuery link
             return Seq.tryHead items
@@ -692,7 +692,7 @@ module Query =
     /// <param name="link">The active ResoniteLink interface used to execute the query.</param>
     /// <returns>The first query result when present; otherwise <paramref name="defaultValue"/>.</returns>
     /// <exception cref="ResoniteLinkException">Thrown when a ResoniteLink operation fails.</exception>
-    let inline firstOr (defaultValue: 'T) (query: Query<'T>) (link: LinkInterface) =
+    let inline firstOr (defaultValue: 'T) (link: LinkInterface) (query: Query<'T>) =
         task {
             let! items = query.RunQuery link
             return Seq.tryHead items |> Option.defaultValue defaultValue

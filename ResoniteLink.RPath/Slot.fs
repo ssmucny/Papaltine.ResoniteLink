@@ -156,24 +156,30 @@ module Slot =
 
     /// <summary>
     /// Flattens a slot tree into Add operations under the supplied parent ID.
+    /// Sets the ID of slots/components to IDs that will reflect their position in the data model.
     /// </summary>
+    /// <remarks>Does not check for pre-existing slots. Only use if ALL slots/components should be added.</remarks>
     let addUnder (parentId: string) (slot: Slot) : ResizeArray<DataModelOperation> =
         flattenNodeDirect parentId slot |> ResizeArray
 
     /// <summary>
     /// Flattens multiple slot trees into Add operations under the supplied parent ID.
+    /// Sets the ID of slots/components to IDs that will reflect their position in the data model.
     /// </summary>
+    /// <remarks>Does not check for pre-existing slots. Only use if ALL slots/components should be added.</remarks>
     let addSlotsUnder (parentId: string) (slots: #seq<Slot>) : ResizeArray<DataModelOperation> =
         slots |> Seq.collect (flattenNodeDirect parentId) |> ResizeArray
 
     /// <summary>
     /// Flattens a slot tree into Add/Update operations based on ID semantics.
+    /// Sets the ID of slots/components to IDs that will reflect their position in the data model.
     /// </summary>
     let patch (slot: Slot) : ResizeArray<DataModelOperation> =
         flattenNode (parentIdOrThrow slot) slot |> ResizeArray
 
     /// <summary>
     /// Flattens multiple slot trees into Add/Update operations based on ID semantics.
+    /// Sets the ID of slots/components to IDs that will reflect their position in the data model.
     /// </summary>
     let patchSlots (slots: #seq<Slot>) : ResizeArray<DataModelOperation> =
         slots

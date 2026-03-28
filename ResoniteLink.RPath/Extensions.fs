@@ -429,3 +429,11 @@ type SlotCSharpExtensions =
     [<Extension>]
     static member inline Child(slot: Slot, predicate: Func<Slot, bool>, includeComponents: bool) : Query<Slot> =
         Query.wrap slot |> Query.child predicate.Invoke includeComponents
+
+    [<Extension>]
+    static member inline Patch(slot: Slot, link: LinkInterface) =
+        slot |> Slot.patch |> link.RunDataModelOperationBatch
+
+    [<Extension>]
+    static member inline Patch(slots: #seq<Slot>, link: LinkInterface) =
+        slots |> Slot.patchSlots |> link.RunDataModelOperationBatch

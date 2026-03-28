@@ -1,8 +1,11 @@
 # RPath
 
 RPath is a composable query + builder EDSL for [ResoniteLink](https://github.com/Yellow-Dog-Man/ResoniteLink).
-It gives you a lazy `Query<'T>` pipeline for traversing the Resonite data model and shaping results with
-F#-friendly combinators and C# extension methods.
+Featuring:
+
+- A lazy `Query<'T>` pipeline for traversing and shaping data model results.
+- A declarative builder API (`Reso` + `Slot`) for creating or patching slot/component graphs.
+- F#-native combinators and C#-friendly extension methods.
 
 ## Package
 
@@ -13,26 +16,51 @@ F#-friendly combinators and C# extension methods.
 dotnet add package Papaltine.ResoniteLink.RPath --version 0.3.0
 ```
 
-## Core model
+## Quick start (C#)
 
-`Query<'T>` is an immutable query value:
+Add the following namespaces:
 
-- Building a query is lazy and does not contact the websocket.
+```csharp
+using ResoniteLink;
+using ResoniteLink.RPath;        // Query<T>, traversal, execution
+using ResoniteLink.RPath.CSharp; // Where/Select/Bind/SelectMany
+```
+
+Then build a query from `Query.Root` and execute with your `LinkInterface`:
+
+```csharp
+LinkInterface link = new LinkInterface();
+await link.Connect(new Uri("ws://localhost:12345"), CancellationToken.None);
+
+var proxyUnderRoot = await Query.Root
+    .Children(includeComponents: false)
+    .Where(slot => slot.Name.Value.Contains("Proxy"))
+    .FirstOr(null, link);
+    // Use .ToList(link) for multiple results
+
+var slotToUpdate = proxyUnderRoot!;
+slotToUpdate.Name.Value = "New Name For Proxy";
+var patchResult = await slotToUpdate.Patch(link);
+```
+
+## Query Structure
+
+`Query<T>` values are immutable and lazy:
+
+- Building a query does not contact the websocket.
 - Executing a query requires a `LinkInterface`.
-- Query values are composable and reusable.
+- Queries are reusable. Build larger queries from several smaller ones.
 
-In F#, `bind`/`>>=` make query-expanding steps explicit, while `map`/`filter`/`flatMap` are in-memory transformations.
+## API Surface
 
-## API surfaces
-
-| Surface                                                   | Namespace                      | Primary use                        |
-|-----------------------------------------------------------|--------------------------------|------------------------------------|
-| `Query` module                                            | `ResoniteLink.RPath.Query`     | F# pipelines and combinators       |
-| `Operators` module (`>>=`, `>=>`)                         | `ResoniteLink.RPath.Operators` | F# monadic style                   |
-| `Slot` module wrappers                                    | `ResoniteLink.RPath.Slot`      | F# slot-rooted traversals          |
-| `Reso` + `Slot` builder ops                               | `ResoniteLink.RPath`           | Build slot trees and emit add/patch operations |
-| F# extension methods                                      | `ResoniteLink.RPath`           | Method-chaining style in F# and C# |
-| C# LINQ-style extensions (`Select`, `Where`, `Bind`, ...) | `ResoniteLink.RPath.CSharp`    | Idiomatic C# query style           |
+| Surface | Namespace | Primary use                                                  |
+|---|---|--------------------------------------------------------------|
+| `Query` module | `ResoniteLink.RPath.Query` | F# combinators and root entry points                         |
+| `Operators` module (`>>=`, `>=>`) | `ResoniteLink.RPath.Operators` | F# monadic composition                                       |
+| F# extension methods | `ResoniteLink.RPath` | Method chaining in F# and C#                                 |
+| C# LINQ-style extensions (`Select`, `Where`, `Bind`, ...) | `ResoniteLink.RPath.CSharp` | Idiomatic C# query style                                     |
+| `Slot` module wrappers | `ResoniteLink.RPath.Slot` | Slot-rooted traversal and data model operation helpers       |
+| `Reso` constructors | `ResoniteLink.RPath` | Declarative slot/component/member construction               |
 
 ## Namespaces
 
@@ -41,67 +69,50 @@ In F#, `bind`/`>>=` make query-expanding steps explicit, while `map`/`filter`/`f
 ```fsharp
 open ResoniteLink
 open ResoniteLink.RPath
-open ResoniteLink.RPath.Query       // Use `Query` module combinators without Query. prefix
-open ResoniteLink.RPath.Operators   // for `>>=` and `>=>`
+open ResoniteLink.RPath.Query      // use query combinators without Query. prefix
+open ResoniteLink.RPath.Operators  // >>= and >=>
 ```
 
 ### C#
 
 ```csharp
 using ResoniteLink;
-using ResoniteLink.RPath;        // traversal + execution extensions
-using ResoniteLink.RPath.CSharp; // Select/Where/Bind/SelectMany
-```
-
-## Quick start
-
-### F# module style
-
-```fsharp
-open ResoniteLink
-open ResoniteLink.RPath
-
-let namesQuery =
-    Query.root
-    |> Query.childrenLite
-    |> Query.filter _.Name.Value.Contains("Proxy")
-    |> Query.map _.Name.Value
-    |> Query.take 10
-
-let names = Query.toArray namesQuery link
-```
-
-### F# extension style
-
-```fsharp
-open ResoniteLink
-open ResoniteLink.RPath
-
-let names =
-    Query.root
-        .Children(false)
-        .Filter(_.Name.Value.Contains("Proxy"))
-        .Map(_.Name.Value)
-        .Take(10)
-        .ToArray(link)
-```
-
-### C# style
-
-```csharp
-using ResoniteLink;
 using ResoniteLink.RPath;
 using ResoniteLink.RPath.CSharp;
-
-var names = await Query.Root
-    .Children(includeComponents: false)
-    .Where(slot => slot.Name.Value.Contains("Proxy"))
-    .Select(slot => slot.Name.Value)
-    .Take(10)
-    .ToArray(link);
 ```
 
-## Traversal APIs
+## Query API
+
+### Common entry points
+
+- `Query.root` / `Query.Root`
+- `Query.findSlotByID` / `Query.FindSlotByID`
+- `Query.findComponentByID` / `Query.FindComponentByID`
+
+### Quick start (F#)
+
+```fsharp
+task {
+    let link = new LinkInterface();
+    do! link.Connect(Uri("ws://localhost:12661"), Threading.CancellationToken.None);
+
+    let! proxyUnderRoot =
+        Query.root
+        |> Query.children false
+        |> Query.filter _.Name.Value.Contains("Proxy")
+        |> Query.first link
+        // Use Query.toArray link for multiple results
+
+    match proxyUnderRoot with
+    | None -> failwith "No proxy found under root slot."
+    | Some proxy ->
+        proxy.Name.Value <- "New Name For Proxy"
+        let! patchResult = proxy |> Slot.patch |> link.RunDataModelOperationBatch
+        ()
+}
+```
+
+### Traversal
 
 For `Query<Slot>`:
 
@@ -112,64 +123,20 @@ For `Query<Slot>`:
 - `ancestorsAndSelf includeComponents` / `ancestorsAndSelfLite` / `ancestorsAndSelfFull`
 - `descendantsAndSelf includeComponents` / `descendantsAndSelfLite` / `descendantsAndSelfFull`
 
-For a single `Slot`, the `Slot` module provides equivalent wrappers with similar names.
+Extension methods expose `.GetChildren(...)`, `.Parent(...)`, `.Ancestors(...)`, `.Descendants(...)`,
+`.AncestorsAndSelf(...)`, and `.DescendantsAndSelf(...)`.
 
-Extension methods expose traversal as `.Children(...)`, `.Parent(...)`, `.Ancestors(...)`,
-`.Descendants(...)`, `.AncestorsAndSelf(...)`, and `.DescendantsAndSelf(...)`.
-
-## Component and member APIs
+### Components, members, references
 
 - `Query.components` / `.Components()`
 - `Query.ofType` / `.OfType(typeName)`
-- `Query.getMember<'T>` / `.Member<'T>(memberName)`
+- `Query.getMember<'T>` / `.Member<T>(memberName)`
 - `Query.dereferenceSlot`, `dereferenceSlotLite`, `dereferenceSlotFull` / `.DereferenceSlot(...)`
 - `Query.dereferenceComponent` / `.DereferenceComponent()`
 
-`getMember<'T>` / `Member<T>` skip values that are missing or incompatible with the requested member type.
+`getMember<'T>` / `Member<T>` skips components with missing or incompatible member types.
 
-## Builder APIs
-
-`Reso` provides declarative constructors for members/components/slots:
-
-- `Reso.bool`, `Reso.str`, numeric/vector constructors, `Reso.reference`
-- `Reso.comp (ID = ..., ComponentType = ...) [ key, member ]`
-- `Reso.slot (...) [ components ] [ children ]`
-- `Reso.newID()` for local temporary IDs used in patch/add graphs
-
-Operation emission lives on the `Slot` module:
-
-- `Slot.addUnder parentId slot`
-- `Slot.addSlotsUnder parentId slots`
-- `Slot.patch slot`
-- `Slot.patchSlots slots`
-
-```fsharp
-task {
-  let tree =
-      Reso.slot (Name = "Slot Name")
-          [ Reso.comp (ComponentType = "[FrooxEngine]FrooxEngine.MeshRenderer")
-                [ "SortingOrder", Reso.int 10 ] ]
-          [ Reso.slot (Name = "Child") [] [] ]
-
-  let! addResult =
-      Slot.addUnder Slot.ROOT_SLOT_ID tree
-      |> link.RunDataModelOperationBatch
-
-  tree.Name.Value <- "New Slot Name"
-  tree.Components[0].Members["SortingOrder"] <- Reso.int 20
-
-  let! patchResult =
-    Slot.patch tree
-    |> link.RunDataModelOperationBatch
-    
-  return (tree, addResult, patchResult)
-}
-```
-
-> [!WARNING]
-> The builder API has two versions of data model operations: `addUnder`/`addSlotsUnder` for building new slot trees, and `patch`/`patchSlots` for updating existing slots. The `add` versions skip checking for slots/components that should be updated. It will just generate Add* operations for everything. This can generate conflicts if you use it on an existing slot, so be sure to use `patch` when updating existing data.
-
-## Composition and shaping
+### Composition and shaping
 
 Query-producing composition:
 
@@ -177,10 +144,13 @@ Query-producing composition:
 - `Operators.(>>=)`
 - `Operators.(>=>)`
 
-Note that the bind operators do not batch any requests by themselves as you provide the mapping function. Use one of the
-axis combinators directly to get batching behavior.
+In-memory shaping:
 
-## Execution and error handling
+- `map`, `filter`, `flatMap`, `mapAll`, `take`, `skip`, `slice`
+
+`bind` can trigger additional requests per bound execution; use axis combinators (`children`, `descendants`, etc.) when batching behavior is desired.
+
+### Execution and error handling
 
 Execution functions:
 
@@ -192,13 +162,125 @@ Execution functions:
 - `firstOr` / `.FirstOr(defaultValue, link)`
 - `toResult` / `.ToResult(link)`
 
-`toResult`/`ToResult` convert `ResoniteLinkException` to `Result.Error`.
-Exceptions thrown inside your own mapping/filtering code still propagate normally.
+`toResult` / `ToResult` converts `ResoniteLinkException` into `Result.Error`. Exceptions thrown inside your own filters/projections still propagate.
 
-## Notes
+## Builder API
 
-- `take`, `skip`, and `slice` use F# sequence semantics.
-    - `take` and `skip` throw if the source sequence has too few items.
-    - Use `mapAll (Seq.truncate n)` when you need a non-throwing cap.
-- Traversal returns query results and is not server-side pagination.
-- Build queries once, execute many times by passing whichever `LinkInterface` you want at execution.
+Builder APIs let you build declarative trees (`Reso`) and then emit data model operations (`Slot`).
+
+### Constructors (`Reso`)
+
+Use `Reso` to build members, components, and slots:
+
+- Scalar/value members: `Reso.bool`, `Reso.str`, `Reso.int`, `Reso.float`, `Reso.double`, ...
+- Vector/quaternion members: `Reso.float2/3/4`, `Reso.double2/3/4`, `Reso.int2/3/4`, `Reso.long2/3/4`, `Reso.floatQ`
+- References: `Reso.reference(targetId)`
+- Components: `Reso.comp (ID = ..., ComponentType = ...) [ key, member ]`
+- Slots: `Reso.slot (...) [ components ] [ children ]`
+
+### Operation emission (`Slot` module)
+
+- `Slot.addUnder parentId slot`
+- `Slot.addSlotsUnder parentId slots`
+- `Slot.patch slot`
+- `Slot.patchSlots slots`
+
+These functions return `ResizeArray<DataModelOperation>` for `link.RunDataModelOperationBatch`.
+
+### Add vs patch matrix
+
+| Function | Input | Emits | Intended use                                                 |
+|---|---|---|--------------------------------------------------------------|
+| `addUnder` | One tree + parent ID | `AddSlot` + `AddComponent` only | Brand-new slot under known parent                            |
+| `addSlotsUnder` | Many trees + parent ID | `AddSlot` + `AddComponent` only | Batch create multiple slots under one parent                 |
+| `patch` | One tree with valid `slot.Parent.TargetID` | Mix of `Add*` and `Update*` | Update existing slot and optionally add new slots/components |
+| `patchSlots` | Many trees, each with valid parent reference | Mix of `Add*` and `Update*` | Batch patch multiple slots                                   |
+
+> [!WARNING]
+> `addUnder` / `addSlotsUnder` never emit updates. If you point them at existing IDs, you can create conflicts.
+> Use `patch` / `patchSlots` for updates.
+
+> [!NOTE]
+> Delete operations must be emitted manually. `patch` will ignore will only add/update.
+
+### ID semantics in patch workflows
+
+Patch behavior is ID-driven:
+
+- `ID = null` generates and sets a new ID with an add operation
+- `ID`s from `Reso.newID()` generate an add operation (use to link IDs without round trips)
+- Existing ID causes an update operation
+
+`Slot.patch` and `Slot.patchSlots` require each root slot to have `slot.Parent.TargetID` set. If you used one of the add functions to create the slot, you already have this information. If you built the tree from scratch, you need to set it manually before patching.
+
+### Builder workflow: create new tree
+
+```fsharp
+task {
+    let tree =
+        Reso.slot (Name = "Dashboard", Tag = "ui")
+            [ Reso.comp (ComponentType = "[FrooxEngine]FrooxEngine.MeshRenderer")
+                [ "SortingOrder", Reso.int 10 ] ]
+            [ Reso.slot (Name = "Child") [] [] ]
+
+    let addOps = Slot.addUnder Slot.ROOT_SLOT_ID tree
+    let! addResult = link.RunDataModelOperationBatch addOps
+    return addResult
+}
+```
+
+### Builder workflow: patch existing tree + add new nodes
+
+```fsharp
+task {
+    // Assume tree is already in the model and has Parent.TargetID set.
+    tree.Name.Value <- "Dashboard (Patched)"
+
+    // Existing component -> UpdateComponent
+    tree.Components[0].Members["SortingOrder"] <- Reso.int 20
+
+    // Fresh component -> AddComponent
+    tree.Components.Add(
+        Reso.comp (ComponentType = "[FrooxEngine]FrooxEngine.UnlitMaterial") []
+    )
+
+    // Fresh child slot -> AddSlot
+    tree.Children.Add(Reso.slot (Name = "Patch Child") [] [])
+
+    let patchOps = Slot.patch tree
+    let! patchResult = link.RunDataModelOperationBatch patchOps
+    return patchResult
+}
+```
+
+### Builder workflow: add multiple trees in one batch
+
+```fsharp
+let slotsToCreate =
+    [ Reso.slot (Name = "A") [] []
+      Reso.slot (Name = "B") [] [] ]
+
+let addOps = Slot.addSlotsUnder Slot.ROOT_SLOT_ID slotsToCreate
+let result = link.RunDataModelOperationBatch addOps
+```
+
+### Builder workflow: batch complex batches together
+
+```fsharp
+let slotId = Reso.newID()
+let batch1 =
+    [ Reso.slot (ID = slotId, Name = "Batch1 Slot1") [] []
+      Reso.slot (Name = "Batch1 Slot2") [] [] ]
+
+let batch2 =
+    [ Reso.slot (Name = "Batch2 Slot1") [] []
+      Reso.slot (Name = "Batch2 Slot2") [] [] ]
+
+let allOps =
+    seq {
+        yield! Slot.addSlotsUnder Slot.ROOT_SLOT_ID batch1
+        yield! Slot.addSlotsUnder slotId batch2
+    }
+
+let result = link.RunDataModelOperationBatch allOps
+```
