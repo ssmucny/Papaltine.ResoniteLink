@@ -93,7 +93,7 @@ type QueryExtensions =
     /// <summary>Executes the query and returns the first result, or <paramref name="defaultValue"/> if empty.</summary>
     [<Extension>]
     static member inline FirstOr(query: Query<'T>, defaultValue: 'T, link: LinkInterface) : Query<'T> =
-        Query.firstOr defaultValue query link
+        Query.firstOr defaultValue query
 
     /// <summary>Executes the query and returns the single result, or throws if there are zero or multiple results.</summary>
     [<Extension>]
