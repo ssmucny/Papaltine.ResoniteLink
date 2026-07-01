@@ -27,7 +27,7 @@ module Slot =
     /// <summary>Gets all descendants of a slot (children, grandchildren, etc.).</summary>
     let descendants (includeComponents: bool) (slot: Slot) : Query<Slot> =
         Query.wrap (nullArgCheck (nameof slot) slot)
-|> Query.descendants includeComponents
+        |> Query.descendants includeComponents
 
     /// <summary>Gets all descendants of a slot without component data.</summary>
     let descendantsLite (slot: Slot) : Query<Slot> = descendants false slot
