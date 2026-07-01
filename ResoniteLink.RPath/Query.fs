@@ -68,7 +68,20 @@ module Query =
             assert (not <| isNull slot.Parent)
             slot.Parent.TargetID |> Option.ofObj
 
-    // Children is null for leaf slots and reference-only slots
+    /// API currently sometimes returns null for queried empty child collections.
+    /// We preserve null only when children were not queried (depth boundary), and normalize queried empty child lists to [].
+    /// https://github.com/Yellow-Dog-Man/ResoniteLink/issues/141
+    let rec private inplaceNormalizeChildrenByDepth (depth: int) (slot: Slot) : unit =
+        if not (isNull slot) && depth <> 0 then
+            if isNull slot.Children then
+                slot.Children <- ResizeArray()
+            else
+                let nextDepth = if depth < 0 then -1 else depth - 1
+
+                for child in slot.Children do
+                    inplaceNormalizeChildrenByDepth nextDepth child
+
+    /// https://github.com/Yellow-Dog-Man/ResoniteLink/issues/141
     let private slotChildrenOrEmpty (slot: Slot) : seq<Slot> =
         if isNull slot || isNull slot.Children then
             Seq.empty
@@ -115,7 +128,9 @@ module Query =
                 link.GetSlotData(GetSlot(SlotID = slotID, Depth = depth, IncludeComponentData = includeComponentData))
 
             if result.Success then
-                return result.Data
+                let slot = result.Data
+                inplaceNormalizeChildrenByDepth depth slot
+                return slot
             else
                 return raise (ResoniteLinkException result.ErrorInfo)
         }
@@ -241,7 +256,9 @@ module Query =
                     return
                         [| for response in batchResponse.Responses do
                                match response with
-                               | SlotResponse slot -> yield slot
+                               | SlotResponse slot ->
+                                   inplaceNormalizeChildrenByDepth depth slot
+                                   yield slot
                                | FailedResponse errorInfo -> raise (ResoniteLinkException errorInfo)
                                | _ -> illegalApiResponse response |]
         }
@@ -336,9 +353,9 @@ module Query =
         q (fun link ->
             task {
                 let! parentSlots = slotQuery.RunQuery link
-let parentSlotIDs =
-    // Protect against null slots in user code.
-    parentSlots |> slotIDsOf |> Seq.toArray
+                let parentSlotIDs =
+                    // Protect against null slots in user code.
+                    parentSlots |> slotIDsOf |> Seq.toArray
                 let! hydratedParents = runGetSlotBatch includeComponents 1 parentSlotIDs link
 
                 return
