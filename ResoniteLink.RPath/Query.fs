@@ -870,7 +870,7 @@ module Query =
     /// </summary>
     /// <remarks>This simply flips the arguments of the query function for ergonomic chaining with piping</remarks>
     let inline run (link: LinkInterface) (query: Query<'T>) =
-        query.RunQuery link |> _.AsTask() |> Async.AwaitTask |> Async.RunSynchronously
+        query.RunQuery link |> _.AsTask().GetAwaiter().GetResult()
 
 /// <summary>
 /// Custom operators for composing RPath queries in F# using symbolic operators.
