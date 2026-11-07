@@ -13,7 +13,7 @@ Featuring:
 - Compatible with `.NET Standard 2.0`
 
 ```bash
-dotnet add package Papaltine.ResoniteLink.RPath --version 0.3.0
+dotnet add package Papaltine.ResoniteLink.RPath --version <version>
 ```
 
 ## Quick start (C#)
