@@ -110,11 +110,11 @@ type Reso =
     /// </summary>
     static member slot
         (
-            [<Struct>] ?ID: string,
-            [<Struct>] ?Name: string,
+            ?ID: string,
+            ?Name: string,
             [<Struct>] ?IsActive: bool,
             [<Struct>] ?IsPersistent: bool,
-            [<Struct>] ?Tag: string,
+            ?Tag: string,
             [<Struct>] ?Position: float3,
             [<Struct>] ?Rotation: floatQ,
             [<Struct>] ?Scale: float3,
@@ -123,14 +123,14 @@ type Reso =
         fun (components: #seq<Component>) (children: #seq<Slot>) ->
             let slot = Slot()
 
-            ID |> ValueOption.iter (fun id -> slot.ID <- id)
-            Name |> ValueOption.iter (fun n -> slot.Name <- Field_string(Value = n))
+            ID |> Option.iter (fun id -> slot.ID <- id)
+            Name |> Option.iter (fun n -> slot.Name <- Field_string(Value = n))
             IsActive |> ValueOption.iter (fun a -> slot.IsActive <- Field_bool(Value = a))
 
             IsPersistent
             |> ValueOption.iter (fun p -> slot.IsPersistent <- Field_bool(Value = p))
 
-            Tag |> ValueOption.iter (fun t -> slot.Tag <- Field_string(Value = t))
+            Tag |> Option.iter (fun t -> slot.Tag <- Field_string(Value = t))
             Position |> ValueOption.iter (fun p -> slot.Position <- Field_float3(Value = p))
             Rotation |> ValueOption.iter (fun r -> slot.Rotation <- Field_floatQ(Value = r))
             Scale |> ValueOption.iter (fun sc -> slot.Scale <- Field_float3(Value = sc))

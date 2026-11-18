@@ -445,8 +445,27 @@ type SlotCSharpExtensions =
 
     [<Extension>]
     static member inline Patch(slot: Slot, link: LinkInterface) =
-        slot |> Slot.patch |> link.RunDataModelOperationBatch
+        slot |> Slot.Patch |> link.RunDataModelOperationBatch
 
     [<Extension>]
     static member inline Patch(slots: #seq<Slot>, link: LinkInterface) =
-        slots |> Slot.patchSlots |> link.RunDataModelOperationBatch
+        slots |> Slot.PatchSlots |> link.RunDataModelOperationBatch
+
+[<Extension>]
+type LinkInterfaceExtensions =
+    /// Safe method for adding a complex slot hierarchies to the data model
+    [<Extension>]
+    static member AddUnder(link, parentId, slot) =
+        Link.AddUnder link parentId slot
+    /// Safe method for adding multiple complex slots hierarchies to the data model
+    [<Extension>]
+    static member AddUnder(link, parentId, slots) =
+        Link.AddSlotsUnder link parentId slots
+    /// Safe method for updating a slot in place
+    [<Extension>]
+    static member Patch(link, slot) =
+        Link.Patch link slot
+    /// Safe method for updating multiple slots in place
+    [<Extension>]
+    static member Patch(link, slots) =
+        Link.PatchSlots link slots
