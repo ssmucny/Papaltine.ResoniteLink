@@ -27,7 +27,7 @@ exception BatchFailed of batchError: string * failed: struct (int * string) arra
 let RunBatch
     (operations: ResizeArray<DataModelOperation>)
     (link: LinkInterface)
-    : Task<Result<int, exn>> =
+    : Task<Result<unit, exn>> =
     task {
         try
             let! response = link.RunDataModelOperationBatch operations
@@ -41,7 +41,7 @@ let RunBatch
 
             return
                 if response.Success && Array.isEmpty failedOperations then
-                    Ok(response.Responses.Count)
+                    Ok()
                 else
                     Error(BatchFailed(response.ErrorInfo, failedOperations))
         with error ->
