@@ -92,7 +92,7 @@ type Reso =
     /// <summary>
     /// Creates a component with the given member key-value pairs.
     /// </summary>
-    static member comp([<Struct>] ?ID: string, [<Struct>] ?ComponentType: string) =
+    static member comp([<Struct>] ?ID: ComponentId, [<Struct>] ?ComponentType: string) =
         fun (members: #seq<struct (string * Member)>) ->
             let dict = Dictionary<string, Member>()
 
@@ -101,7 +101,7 @@ type Reso =
 
             let builtComponent = Component(Members = dict)
 
-            ID |> ValueOption.iter (fun id -> builtComponent.ID <- id)
+            ID |> ValueOption.iter (fun id -> builtComponent.ID <- id.Value)
             ComponentType |> ValueOption.iter (fun ct -> builtComponent.ComponentType <- ct)
             builtComponent
 
@@ -110,7 +110,7 @@ type Reso =
     /// </summary>
     static member slot
         (
-            ?ID: string,
+            ?ID: SlotId,
             ?Name: string,
             [<Struct>] ?IsActive: bool,
             [<Struct>] ?IsPersistent: bool,
@@ -123,7 +123,7 @@ type Reso =
         fun (components: #seq<Component>) (children: #seq<Slot>) ->
             let slot = Slot()
 
-            ID |> Option.iter (fun id -> slot.ID <- id)
+            ID |> Option.iter (fun id -> slot.ID <- id.Value)
             Name |> Option.iter (fun n -> slot.Name <- Field_string(Value = n))
             IsActive |> ValueOption.iter (fun a -> slot.IsActive <- Field_bool(Value = a))
 
