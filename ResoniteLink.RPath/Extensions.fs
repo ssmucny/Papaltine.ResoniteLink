@@ -209,7 +209,7 @@ type SlotExtensions =
     /// </summary>
     /// <param name="slot"></param>
     [<Extension>]
-    static member inline TypedID(slot: Slot) : SlotId = SlotId slot.ID
+    static member TypedID(slot: Slot) : SlotId = SlotId slot.ID
 
     /// <summary>Gets the direct children of the slot, including component data.</summary>
     [<Extension>]
@@ -317,7 +317,7 @@ type ComponentExtensions =
     /// </summary>
     /// <param name="comp"></param>
     [<Extension>]
-    static member inline TypedID(comp: Component) : ComponentId = ComponentId comp.ID
+    static member TypedID(comp: Component) : ComponentId = ComponentId comp.ID
 
 /// <summary>
 /// Extension methods on Query&lt;Reference&gt; for dereferencing references to their target data model objects.
