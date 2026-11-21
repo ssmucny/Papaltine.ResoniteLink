@@ -48,10 +48,10 @@ let RunBatch
             return Error(error)
     }
 
-let AddUnder (parentId: string) (slot: Slot) (link: LinkInterface) =
+let AddUnder (parentId: SlotId) (slot: Slot) (link: LinkInterface) =
     RunBatch (Slot.AddUnder parentId slot) link
     
-let AddSlotsUnder (parentId: string) (slots: Slot seq) (link: LinkInterface) =
+let AddSlotsUnder (parentId: SlotId) (slots: Slot seq) (link: LinkInterface) =
     RunBatch (Slot.AddSlotsUnder parentId slots) link
     
 let Patch (slot: Slot) (link: LinkInterface) =

@@ -203,6 +203,13 @@ type SlotQueryExtensions =
 /// </remarks>
 [<Extension>]
 type SlotExtensions =
+    
+    /// <summary>
+    /// Gets the ID of a slot as a strongly typed SlotId new type
+    /// </summary>
+    /// <param name="slot"></param>
+    [<Extension>]
+    static member inline TypedID(slot: Slot) : SlotId = SlotId slot.ID
 
     /// <summary>Gets the direct children of the slot, including component data.</summary>
     [<Extension>]
@@ -303,6 +310,14 @@ type ComponentQueryExtensions =
         : Query<'T> =
         Query.getMember<'T> memberName query
 
+[<Extension>]
+type ComponentExtensions =
+    /// <summary>
+    /// Gets the ID of a component as a strongly typed ComponentId new type
+    /// </summary>
+    /// <param name="comp"></param>
+    [<Extension>]
+    static member inline TypedID(comp: Component) : ComponentId = ComponentId comp.ID
 
 /// <summary>
 /// Extension methods on Query&lt;Reference&gt; for dereferencing references to their target data model objects.

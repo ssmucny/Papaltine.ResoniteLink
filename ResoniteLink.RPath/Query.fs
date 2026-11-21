@@ -833,10 +833,10 @@ module Query =
     /// <param name="slotID">The Resonite slot ID to retrieve.</param>
     /// <exception cref="ResoniteLinkException">Thrown when the slot cannot be resolved by ResoniteLink.</exception>
     [<CompiledName "FindSlotByID">]
-    let findSlotByID (slotID: string) : Query<Slot> =
+    let findSlotByID (slotID: SlotId) : Query<Slot> =
         q (fun link ->
             task {
-                let! slot = getSlot slotID 0 false link
+                let! slot = getSlot slotID.Value 0 false link
                 return Seq.singleton slot
             }
             |> ValueTask<Slot seq>)
@@ -847,10 +847,10 @@ module Query =
     /// <param name="componentID">The Resonite component ID to retrieve.</param>
     /// <exception cref="ResoniteLinkException">Thrown when the component cannot be resolved by ResoniteLink.</exception>
     [<CompiledName "FindComponentByID">]
-    let findComponentByID (componentID: string) : Query<Component> =
+    let findComponentByID (componentID: ComponentId) : Query<Component> =
         q (fun link ->
             task {
-                let! comp = link.GetComponentData(GetComponent(ComponentID = componentID))
+                let! comp = link.GetComponentData(GetComponent(ComponentID = componentID.Value))
 
                 if comp.Success then
                     return Seq.singleton comp.Data

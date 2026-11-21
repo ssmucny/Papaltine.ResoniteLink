@@ -1,6 +1,7 @@
 namespace ResoniteLink.RPath
 
 open System
+open ResoniteLink
 
 /// <summary>
 /// ID of a field's <c>Value</c> member (not of the component that owns it), for ProtoGraph ports that read or drive a value.
@@ -9,7 +10,7 @@ open System
 /// <remarks><c>default</c> (or <see cref="FieldId.none"/>) is an unset ID, which leaves a port unwired.</remarks>
 [<Struct>]
 type FieldId<'t> =
-    private
+    internal
     | FieldId of fieldId: string
 
     /// The raw ID, or null when unset
@@ -20,18 +21,20 @@ type FieldId<'t> =
 /// ID of a slot, for ProtoGraph ports that reference a <c>Slot</c>. <c>default</c> is an unset ID.
 [<Struct>]
 type SlotId =
-    private
+    internal
     | SlotId of slotId: string
 
     /// The raw ID, or null when unset
     member this.Value =
         let (SlotId id) = this
         id
+        
+    static member Root = SlotId Slot.ROOT_SLOT_ID
 
 /// ID of a component, for ProtoGraph ports that reference a component. <c>default</c> is an unset ID.
 [<Struct>]
 type ComponentId =
-    private
+    internal
     | ComponentId of componentId: string
 
     /// The raw ID, or null when unset
@@ -42,7 +45,7 @@ type ComponentId =
 module private IdValidation =
     let nonEmpty (id: string) =
         if String.IsNullOrWhiteSpace id then
-            invalidArg (nameof id) "Resonite IDs must be non-empty strings"
+            invalidArg (nameof id) "Resonite IDs must be non-empty strings. Use _.None for an explicitly empty ID"
 
         id
 

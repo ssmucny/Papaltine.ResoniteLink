@@ -32,8 +32,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Include="Query.fs"/>
         <Compile Include="Ids.fs" />
+        <Compile Include="Query.fs" />
         <Compile Include="Reso.fs"/>
         <Compile Include="Slot.fs"/>
         <Compile Include="Link.fs" />
