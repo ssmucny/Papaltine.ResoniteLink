@@ -6,7 +6,7 @@ open System.Threading.Tasks
 open ResoniteLink
 
 /// The session rejected the batch (`batchError`) and/or individual operations (batch index, message).
-exception BatchFailed of batchError: string * failed: struct (int * string) array with
+exception BatchFailed of batchError: string * failed: struct (int * string * DataModelOperation) array with
     override this.Message =
         seq {
             if not (String.IsNullOrEmpty this.batchError) then
@@ -14,7 +14,7 @@ exception BatchFailed of batchError: string * failed: struct (int * string) arra
 
             yield!
                 this.failed
-                |> Seq.map (fun struct (index, message) -> $"operation {index}: {message}")
+                |> Seq.map (fun struct (index, message, op) -> $"operation {index}: {message}. {op.ToString()}")
         }
         |> String.concat "\n"
 
@@ -36,7 +36,7 @@ let RunBatch
                 response.Responses
                 |> Seq.indexed
                 |> Seq.filter (fun (_, operationResponse) -> not operationResponse.Success)
-                |> Seq.map (fun (index, operationResponse) -> struct (index, operationResponse.ErrorInfo))
+                |> Seq.map (fun (index, operationResponse) -> struct (index, operationResponse.ErrorInfo, operations[index]))
                 |> Seq.toArray
 
             return
