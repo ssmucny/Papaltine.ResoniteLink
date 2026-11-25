@@ -40,4 +40,8 @@
         <Compile Include="Extensions.fs" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Resonite.RPath.C\Resonite.RPath.C.csproj" />
+    </ItemGroup>
+
 </Project>

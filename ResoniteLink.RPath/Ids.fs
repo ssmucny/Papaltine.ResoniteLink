@@ -1,6 +1,7 @@
 namespace ResoniteLink.RPath
 
 open System
+open Resonite.RPath.C
 open ResoniteLink
 
 /// <summary>
@@ -31,17 +32,6 @@ type SlotId =
         
     static member Root = SlotId Slot.ROOT_SLOT_ID
 
-/// ID of a component, for ProtoGraph ports that reference a component. <c>default</c> is an unset ID.
-[<Struct>]
-type ComponentId =
-    internal
-    | ComponentId of componentId: string
-
-    /// The raw ID, or null when unset
-    member this.Value =
-        let (ComponentId id) = this
-        id
-
 module private IdValidation =
     let nonEmpty (id: string) =
         if String.IsNullOrWhiteSpace id then
@@ -59,7 +49,7 @@ module FieldId =
 
     /// A new unique ID, to assign to a field's <c>Value</c> member and to pass to a port that wires to it
     let Fresh<'t> () : FieldId<'t> =
-        FieldId(typeof<'t>.Name + "_" + Guid.NewGuid().ToString())
+        FieldId($"Field<{typeof<'t>.Name}>_{Guid.NewGuid().ToString()}")
 
 [<RequireQualifiedAccess>]
 module SlotId =
@@ -76,11 +66,11 @@ module SlotId =
 [<RequireQualifiedAccess>]
 module ComponentId =
     /// Unset ID, which leaves the port unwired
-    let None = Unchecked.defaultof<ComponentId>
+    let None<'t> = Unchecked.defaultof<ComponentId<'t>>
 
     /// Wrap a raw Resonite component ID
-    let ofString (id: string) : ComponentId = ComponentId(IdValidation.nonEmpty id)
+    let ofString<'t> (id: string) : ComponentId<'t> = ComponentId<'t>(IdValidation.nonEmpty id)
 
     /// A new unique ID, to assign to a component and to pass to a required reference
-    let Fresh<'t> () : ComponentId =
-        ComponentId("Component_" + Guid.NewGuid().ToString())
+    let Fresh<'t> () : ComponentId<'t> =
+        ComponentId<'t>($"Component<{typeof<'t>.Name}>_{Guid.NewGuid().ToString()}")
