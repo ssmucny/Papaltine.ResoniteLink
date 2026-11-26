@@ -1,4 +1,4 @@
-﻿namespace Resonite.RPath.C
+﻿namespace Resonite.RPath
 {
     /// ID of a component, for ProtoGraph ports that reference a component. <c>default</c> is an unset ID.
     public readonly struct ComponentId<T>

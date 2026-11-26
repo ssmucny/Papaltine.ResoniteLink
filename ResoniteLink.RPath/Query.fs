@@ -2,6 +2,7 @@ namespace ResoniteLink.RPath
 
 open System
 open System.Threading.Tasks
+open Resonite.RPath
 open ResoniteLink
 
 /// <summary>
@@ -847,7 +848,7 @@ module Query =
     /// <param name="componentID">The Resonite component ID to retrieve.</param>
     /// <exception cref="ResoniteLinkException">Thrown when the component cannot be resolved by ResoniteLink.</exception>
     [<CompiledName "FindComponentByID">]
-    let findComponentByID (componentID: ComponentId) : Query<Component> =
+    let findComponentByID (componentID: ComponentId<'t>) : Query<Component> =
         q (fun link ->
             task {
                 let! comp = link.GetComponentData(GetComponent(ComponentID = componentID.Value))

@@ -2,6 +2,7 @@ namespace ResoniteLink.RPath
 
 open System
 open System.Collections.Generic
+open Resonite.RPath
 open ResoniteLink
 
 module private Helpers =
@@ -90,9 +91,9 @@ type Reso =
         memberRef
 
     /// <summary>
-    /// Creates a component with the given member key-value pairs.
+    /// Creates an erased component with the given member key-value pairs.
     /// </summary>
-    static member comp([<Struct>] ?ID: ComponentId, [<Struct>] ?ComponentType: string) =
+    static member comp([<Struct>] ?ID: ComponentId<'t>, [<Struct>] ?ComponentType: string) =
         fun (members: #seq<struct (string * Member)>) ->
             let dict = Dictionary<string, Member>()
 

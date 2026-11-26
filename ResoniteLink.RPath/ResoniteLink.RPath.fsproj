@@ -3,9 +3,10 @@
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <IsPackable>true</IsPackable>
 
         <PackageId>Papaltine.ResoniteLink.RPath</PackageId>
-        <Version>0.15.0</Version>
+        <Version>0.17.0</Version>
         <Authors>Sam Smucny</Authors>
         <Description>A composable query EDSL for ResoniteLink, providing LINQ-style ergonomic operations for exploring the Resonite data model hierarchy.</Description>
         <PackageTags>Resonite ResoniteLink Query EDSL</PackageTags>
@@ -20,6 +21,8 @@
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+        <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
     </PropertyGroup>
 
     <ItemGroup>
@@ -33,6 +36,7 @@
 
     <ItemGroup>
         <Compile Include="Ids.fs" />
+        <Compile Include="Component.fs" />
         <Compile Include="Query.fs" />
         <Compile Include="Reso.fs"/>
         <Compile Include="Slot.fs"/>
@@ -41,7 +45,11 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Resonite.RPath.C\Resonite.RPath.C.csproj" />
+      <ProjectReference Include="..\Resonite.RPath.C\Resonite.RPath.C.csproj" PrivateAssets="all" />
     </ItemGroup>
-
+    <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="ResolveReferences">
+        <ItemGroup>
+            <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
+        </ItemGroup>
+    </Target>
 </Project>

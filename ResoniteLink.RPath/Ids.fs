@@ -1,7 +1,7 @@
 namespace ResoniteLink.RPath
 
 open System
-open Resonite.RPath.C
+open Resonite.RPath
 open ResoniteLink
 
 /// <summary>
@@ -60,7 +60,7 @@ module SlotId =
     let ofString (id: string) : SlotId = SlotId(IdValidation.nonEmpty id)
 
     /// A new unique ID, to assign to a slot and to pass to a required reference
-    let Fresh<'t> () : SlotId =
+    let Fresh () : SlotId =
         SlotId("Slot_" + Guid.NewGuid().ToString())
 
 [<RequireQualifiedAccess>]
