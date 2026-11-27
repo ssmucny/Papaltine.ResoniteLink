@@ -2,8 +2,10 @@ namespace ResoniteLink.RPath
 
 open System.Collections.Generic
 open System.Text.Json.Serialization
-open Resonite.RPath
 open ResoniteLink
+
+module private Helper =
+    let value (c: ComponentId<_>) = c.Value
 
 /// <summary>
 /// Typed wrapper for Component that can be parameterized by the component type it represents. Able to get the typed ID with TypedID() method.
@@ -13,12 +15,13 @@ open ResoniteLink
 [<Sealed>]
 type Component<'t>(ComponentType: string, ?ID: string, ?Members: Dictionary<string, Member>, [<Struct>] ?IsReferenceOnly: bool) =
     inherit Component(
-        ID = Option.defaultWith (ComponentId.Fresh<'t> >> _.Value) ID,
+        ID = Option.defaultWith (fun () -> let c = ComponentId.Fresh<'t>() in c.Value) ID,
         ComponentType = ComponentType,
         Members = Option.defaultWith Dictionary Members,
         IsReferenceOnly = defaultValueArg IsReferenceOnly false)
     
-    member this.TypedID() = ComponentId<'t> this.ID
+    member this.TypedID() =
+        ComponentId<'t> this.ID
     
     /// Up casts to the normal Component type. Same as `c :> Component`.
     [<JsonIgnore>]

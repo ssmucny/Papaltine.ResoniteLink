@@ -2,7 +2,6 @@ namespace ResoniteLink.RPath
 
 open System
 open System.Threading.Tasks
-open Resonite.RPath
 open ResoniteLink
 
 /// <summary>

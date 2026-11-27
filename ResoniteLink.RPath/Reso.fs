@@ -2,7 +2,6 @@ namespace ResoniteLink.RPath
 
 open System
 open System.Collections.Generic
-open Resonite.RPath
 open ResoniteLink
 
 module private Helpers =

@@ -45,7 +45,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Resonite.RPath.C\Resonite.RPath.C.csproj" PrivateAssets="all" />
+      <ProjectReference Include="..\ResoniteLink.RPath.C\ResoniteLink.RPath.C.csproj" PrivateAssets="all" />
     </ItemGroup>
     <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="ResolveReferences">
         <ItemGroup>

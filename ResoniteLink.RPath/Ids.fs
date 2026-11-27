@@ -1,7 +1,6 @@
 namespace ResoniteLink.RPath
 
 open System
-open Resonite.RPath
 open ResoniteLink
 
 /// <summary>
@@ -31,6 +30,8 @@ type SlotId =
         id
         
     static member Root = SlotId Slot.ROOT_SLOT_ID
+    
+type ComponentId<'t> = ResoniteLink.RPath.C.ComponentId<'t>
 
 module private IdValidation =
     let nonEmpty (id: string) =

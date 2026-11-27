@@ -1,4 +1,4 @@
-﻿namespace Resonite.RPath
+﻿namespace ResoniteLink.RPath.C
 {
     /// ID of a component, for ProtoGraph ports that reference a component. <c>default</c> is an unset ID.
     public readonly struct ComponentId<T>
@@ -14,11 +14,11 @@
         /// <summary>
         /// Upcast a component ID to a wider type. The current type must be a proper subtype of the target type.
         /// </summary>
-        /// <typeparam name="T2">The supertype to cast to</typeparam>
+        /// <typeparam name="TFrom">The more specific type to widen from</typeparam>
         /// <returns>The more general ID</returns>
-        public ComponentId<T2> Cast<T2>() where T2 : T
+        public static ComponentId<T> From<TFrom>(ComponentId<TFrom> id) where TFrom : T
         {
-            return new ComponentId<T2>(Value);
+            return new ComponentId<T>(id.Value);
         }
     }
 }

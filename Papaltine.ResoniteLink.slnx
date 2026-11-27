@@ -1,4 +1,4 @@
 <Solution>
-    <Project Path="Resonite.RPath.C/Resonite.RPath.C.csproj" />
+    <Project Path="ResoniteLink.RPath.C\ResoniteLink.RPath.C.csproj" />
     <Project Path="ResoniteLink.RPath/ResoniteLink.RPath.fsproj" />
 </Solution>
